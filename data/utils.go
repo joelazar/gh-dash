@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/cli/go-gh/v2/pkg/api"
 
 	"github.com/dlvhdr/gh-dash/v4/ui/theme"
 )
@@ -51,4 +52,8 @@ func GetAuthorRoleIcon(role string, theme theme.Theme) string {
 	default:
 		return lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor(theme.UnknownRoleIconColor)).Render(theme.UnknownRoleIcon)
 	}
+}
+
+func NewClient() (*api.RESTClient, error) {
+	return api.DefaultRESTClient()
 }

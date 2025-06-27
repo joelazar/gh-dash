@@ -3,7 +3,6 @@ package keys
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	log "github.com/charmbracelet/log"
 
@@ -11,37 +10,31 @@ import (
 )
 
 type KeyMap struct {
-	viewType      config.ViewType
-	Up            key.Binding
-	Down          key.Binding
-	FirstLine     key.Binding
-	LastLine      key.Binding
+	Issues       IssueKeyMap
+	Prs          PRKeyMap
+	Branches     BranchKeyMap
+	Notifications NotificationKeyMap
+	Help         key.Binding
+	Quit         key.Binding
+	NextSection  key.Binding
+	PrevSection  key.Binding
+	Search       key.Binding
+	Refresh      key.Binding
+	PageDown     key.Binding
+	PageUp       key.Binding
+	Up           key.Binding
+	Down         key.Binding
+	FirstLine    key.Binding
+	LastLine     key.Binding
 	TogglePreview key.Binding
-	OpenGithub    key.Binding
-	Refresh       key.Binding
-	RefreshAll    key.Binding
-	Redraw        key.Binding
-	PageDown      key.Binding
-	PageUp        key.Binding
-	NextSection   key.Binding
-	PrevSection   key.Binding
-	Search        key.Binding
-	CopyUrl       key.Binding
-	CopyNumber    key.Binding
-	Help          key.Binding
-	Quit          key.Binding
+	OpenGithub   key.Binding
+	CopyNumber   key.Binding
+	CopyUrl      key.Binding
+	RefreshAll   key.Binding
+	Redraw       key.Binding
 }
 
-func CreateKeyMapForView(viewType config.ViewType) help.KeyMap {
-	Keys.viewType = viewType
-	return Keys
-}
-
-func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Help}
-}
-
-func (k KeyMap) FullHelp() [][]key.Binding {
+func (k KeyMap) FullHelp(viewType config.ViewType) [][]key.Binding {
 	var additionalKeys []key.Binding
 	var customKeys []key.Binding
 
@@ -49,15 +42,19 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		customKeys = append(customKeys, CustomUniversalBindings...)
 	}
 
-	if k.viewType == config.PRsView {
+	switch viewType {
+	case config.PRsView:
 		additionalKeys = PRFullHelp()
 		customKeys = append(customKeys, CustomPRBindings...)
-	} else if k.viewType == config.RepoView {
+	case config.RepoView:
 		additionalKeys = BranchFullHelp()
 		customKeys = append(customKeys, CustomBranchBindings...)
-	} else {
+	case config.IssuesView:
 		additionalKeys = IssueFullHelp()
 		customKeys = append(customKeys, CustomIssueBindings...)
+	case config.NotificationsView:
+		additionalKeys = NotificationFullHelp()
+		customKeys = append(customKeys, CustomNotificationBindings...)
 	}
 
 	sections := [][]key.Binding{
@@ -104,14 +101,50 @@ func (k KeyMap) QuitAndHelpKeys() []key.Binding {
 	return []key.Binding{k.Help, k.Quit}
 }
 
-var Keys = &KeyMap{
+var Keys = KeyMap{
+	Issues:       IssueKeys,
+	Prs:          PRKeys,
+	Branches:     BranchKeys,
+	Notifications: NotificationKeys,
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q", "quit"),
+	),
+	NextSection: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "next section"),
+	),
+	PrevSection: key.NewBinding(
+		key.WithKeys("shift+tab"),
+		key.WithHelp("shift+tab", "previous section"),
+	),
+	Search: key.NewBinding(
+		key.WithKeys("/"),
+		key.WithHelp("/", "search"),
+	),
+	Refresh: key.NewBinding(
+		key.WithKeys("R"),
+		key.WithHelp("R", "refresh"),
+	),
+	PageDown: key.NewBinding(
+		key.WithKeys("ctrl+d"),
+		key.WithHelp("ctrl+d", "page down"),
+	),
+	PageUp: key.NewBinding(
+		key.WithKeys("ctrl+u"),
+		key.WithHelp("ctrl+u", "page up"),
+	),
 	Up: key.NewBinding(
-		key.WithKeys("up", "k"),
-		key.WithHelp("↑/k", "move up"),
+		key.WithKeys("k", "up"),
+		key.WithHelp("k/↑", "up"),
 	),
 	Down: key.NewBinding(
-		key.WithKeys("down", "j"),
-		key.WithHelp("↓/j", "move down"),
+		key.WithKeys("j", "down"),
+		key.WithHelp("j/↓", "down"),
 	),
 	FirstLine: key.NewBinding(
 		key.WithKeys("g", "home"),
@@ -123,39 +156,11 @@ var Keys = &KeyMap{
 	),
 	TogglePreview: key.NewBinding(
 		key.WithKeys("p"),
-		key.WithHelp("p", "open in Preview"),
+		key.WithHelp("p", "toggle preview"),
 	),
 	OpenGithub: key.NewBinding(
 		key.WithKeys("o"),
-		key.WithHelp("o", "open in GitHub"),
-	),
-	Refresh: key.NewBinding(
-		key.WithKeys("r"),
-		key.WithHelp("r", "refresh"),
-	),
-	RefreshAll: key.NewBinding(
-		key.WithKeys("R"),
-		key.WithHelp("R", "refresh all"),
-	),
-	PageDown: key.NewBinding(
-		key.WithKeys("ctrl+d"),
-		key.WithHelp("Ctrl+d", "preview page down"),
-	),
-	PageUp: key.NewBinding(
-		key.WithKeys("ctrl+u"),
-		key.WithHelp("Ctrl+u", "preview page up"),
-	),
-	NextSection: key.NewBinding(
-		key.WithKeys("right", "l"),
-		key.WithHelp("󰁔/l", "next section"),
-	),
-	PrevSection: key.NewBinding(
-		key.WithKeys("left", "h"),
-		key.WithHelp("󰁍/h", "previous section"),
-	),
-	Search: key.NewBinding(
-		key.WithKeys("/"),
-		key.WithHelp("/", "search"),
+		key.WithHelp("o", "open in github"),
 	),
 	CopyNumber: key.NewBinding(
 		key.WithKeys("y"),
@@ -165,18 +170,18 @@ var Keys = &KeyMap{
 		key.WithKeys("Y"),
 		key.WithHelp("Y", "copy url"),
 	),
-	Help: key.NewBinding(
-		key.WithKeys("?"),
-		key.WithHelp("?", "help"),
+	RefreshAll: key.NewBinding(
+		key.WithKeys("ctrl+r"),
+		key.WithHelp("ctrl+r", "refresh all"),
 	),
-	Quit: key.NewBinding(
-		key.WithKeys("q", "esc", "ctrl+c"),
-		key.WithHelp("q", "quit"),
+	Redraw: key.NewBinding(
+		key.WithKeys("ctrl+l"),
+		key.WithHelp("ctrl+l", "redraw"),
 	),
 }
 
 // Rebind will update our saved keybindings from configuration values.
-func Rebind(universal, issueKeys, prKeys, branchKeys []config.Keybinding) error {
+func Rebind(universal, issueKeys, prKeys, branchKeys, notificationKeys []config.Keybinding) error {
 	err := rebindUniversal(universal)
 	if err != nil {
 		return err
@@ -188,6 +193,11 @@ func Rebind(universal, issueKeys, prKeys, branchKeys []config.Keybinding) error 
 	}
 
 	err = rebindBranchKeys(branchKeys)
+	if err != nil {
+		return err
+	}
+
+	err = rebindNotificationKeys(notificationKeys)
 	if err != nil {
 		return err
 	}
@@ -260,7 +270,7 @@ func rebindUniversal(universal []config.Keybinding) error {
 			key = &Keys.PrevSection
 		case "search":
 			key = &Keys.Search
-		case "copyurl":
+		case "copyUrl":
 			key = &Keys.CopyUrl
 		case "copyNumber":
 			key = &Keys.CopyNumber

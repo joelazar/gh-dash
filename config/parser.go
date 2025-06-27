@@ -32,6 +32,7 @@ const (
 	PRsView    ViewType = "prs"
 	IssuesView ViewType = "issues"
 	RepoView   ViewType = "repo"
+	NotificationsView ViewType = "notifications"
 )
 
 type SectionConfig struct {
@@ -54,6 +55,11 @@ type IssuesSectionConfig struct {
 	Filters string
 	Limit   *int               `yaml:"limit,omitempty"`
 	Layout  IssuesLayoutConfig `yaml:"layout,omitempty"`
+}
+
+type NotificationsSectionConfig struct {
+	Title string
+	Limit *int `yaml:"limit,omitempty"`
 }
 
 type PreviewConfig struct {
@@ -139,10 +145,11 @@ func (kb Keybinding) NewBinding(previous *key.Binding) key.Binding {
 }
 
 type Keybindings struct {
-	Universal []Keybinding `yaml:"universal"`
-	Issues    []Keybinding `yaml:"issues"`
-	Prs       []Keybinding `yaml:"prs"`
-	Branches  []Keybinding `yaml:"branches"`
+	Universal     []Keybinding `yaml:"universal"`
+	Issues        []Keybinding `yaml:"issues"`
+	Prs           []Keybinding `yaml:"prs"`
+	Branches      []Keybinding `yaml:"branches"`
+	Notifications []Keybinding `yaml:"notifications"`
 }
 
 type Pager struct {
@@ -223,6 +230,7 @@ type ThemeConfig struct {
 type Config struct {
 	PRSections             []PrsSectionConfig    `yaml:"prSections"`
 	IssuesSections         []IssuesSectionConfig `yaml:"issuesSections"`
+	NotificationsSections  []NotificationsSectionConfig `yaml:"notificationsSections"`
 	Repo                   RepoConfig            `yaml:"repo"`
 	Defaults               Defaults              `yaml:"defaults"`
 	Keybindings            Keybindings           `yaml:"keybindings"`
@@ -336,6 +344,11 @@ func (parser ConfigParser) getDefaultConfig() Config {
 			{
 				Title:   "Involved",
 				Filters: "is:open involves:@me -author:@me",
+			},
+		},
+		NotificationsSections: []NotificationsSectionConfig{
+			{
+				Title: "Notifications",
 			},
 		},
 		Keybindings: Keybindings{

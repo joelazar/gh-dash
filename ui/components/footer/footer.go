@@ -108,8 +108,8 @@ func (m Model) View() string {
 	}
 
 	if m.ShowAll {
-		keymap := keys.CreateKeyMapForView(m.ctx.View)
-		fullHelp := m.help.View(keymap)
+		keymap := keys.Keys.FullHelp(m.ctx.View)
+		fullHelp := m.help.FullHelpView(keymap)
 		return lipgloss.JoinVertical(lipgloss.Top, footer, fullHelp)
 	}
 
@@ -126,14 +126,22 @@ func (m *Model) UpdateProgramContext(ctx *context.ProgramContext) {
 }
 
 func (m *Model) renderViewButton(view config.ViewType) string {
-	v := " PRs"
-	if view == config.IssuesView {
-		v = " Issues"
+	var v string
+	switch view {
+	case config.PRsView:
+		v = " PRs"
+	case config.IssuesView:
+		v = " Issues"
+	case config.NotificationsView:
+		v = " Notifications"
+	case config.RepoView:
+		v = " Repo"
+	default:
+		v = " Unknown"
 	}
 
 	if m.ctx.View == view {
 		return m.ctx.Styles.ViewSwitcher.ActiveView.Render(v)
-
 	}
 	return m.ctx.Styles.ViewSwitcher.InactiveView.Render(v)
 }
@@ -153,17 +161,31 @@ func (m *Model) renderViewSwitcher(ctx *context.ProgramContext) string {
 		user = ctx.Styles.Common.FooterStyle.Render("@" + ctx.User)
 	}
 
-	view := lipgloss.JoinHorizontal(
-		lipgloss.Top,
+	viewButtons := []string{
 		ctx.Styles.ViewSwitcher.ViewsSeparator.PaddingLeft(1).Render(m.renderViewButton(config.PRsView)),
 		ctx.Styles.ViewSwitcher.ViewsSeparator.Render(" │ "),
 		m.renderViewButton(config.IssuesView),
-		lipgloss.NewStyle().Background(ctx.Styles.Common.FooterStyle.GetBackground()).Foreground(ctx.Styles.ViewSwitcher.ViewsSeparator.GetBackground()).Render(" "),
+		ctx.Styles.ViewSwitcher.ViewsSeparator.Render(" │ "),
+		m.renderViewButton(config.NotificationsView),
+	}
+
+	// Add repo view if feature flag is enabled
+	if config.IsFeatureEnabled(config.FF_REPO_VIEW) {
+		viewButtons = append(viewButtons,
+			ctx.Styles.ViewSwitcher.ViewsSeparator.Render(" │ "),
+			m.renderViewButton(config.RepoView),
+		)
+	}
+
+	viewButtons = append(viewButtons,
+		lipgloss.NewStyle().Background(ctx.Styles.Common.FooterStyle.GetBackground()).Foreground(ctx.Styles.ViewSwitcher.ViewsSeparator.GetBackground()).Render(" "),
 		repo,
 		ctx.Styles.Common.FooterStyle.Foreground(m.ctx.Theme.FaintText).Render(" • "),
 		user,
 		ctx.Styles.Common.FooterStyle.Foreground(m.ctx.Theme.FaintBorder).Render(" │"),
 	)
+
+	view := lipgloss.JoinHorizontal(lipgloss.Top, viewButtons...)
 
 	return ctx.Styles.ViewSwitcher.Root.Render(view)
 }

@@ -65,6 +65,10 @@ func (ctx *ProgramContext) GetViewSectionsConfig() []config.SectionConfig {
 		for _, cfg := range ctx.Config.IssuesSections {
 			configs = append(configs, cfg.ToSectionConfig())
 		}
+	case config.NotificationsView:
+		for _, cfg := range ctx.Config.NotificationsSections {
+			configs = append(configs, cfg.ToSectionConfig())
+		}
 	}
 
 	return append([]config.SectionConfig{{Title: ""}}, configs...)
