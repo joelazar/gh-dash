@@ -1,0 +1,7 @@
+- [ ] Update the design for the notifications so it would be more similar as prs and issues
+- [ ] After changing the view from notifications, the leftover notification still rendered, meanwhile we are in another kind of resources
+- [ ] Only unread notifications are displayed currently
+- [ ] At the bottom bar, there should be a bit more space after Notifications
+- [ ] Add back icons for PRs and Issues, and add a new icon for Notifications
+- [ ] Search not working at all for notifications, possible filter options: repo, is, reason, author
+- [ ] Notification URL is not parsed correctly for different resources, wrong for PRs for sure, probably for issues with others too
