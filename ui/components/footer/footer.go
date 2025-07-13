@@ -130,10 +130,12 @@ func (m *Model) renderViewButton(view config.ViewType) string {
 	if view == config.IssuesView {
 		v = " Issues"
 	}
+	if view == config.NotificationsView {
+		v = " Notifications"
+	}
 
 	if m.ctx.View == view {
 		return m.ctx.Styles.ViewSwitcher.ActiveView.Render(v)
-
 	}
 	return m.ctx.Styles.ViewSwitcher.InactiveView.Render(v)
 }

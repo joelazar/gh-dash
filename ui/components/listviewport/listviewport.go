@@ -98,8 +98,9 @@ func (m *Model) NextItem() int {
 }
 
 func (m *Model) PrevItem() int {
-	atTopOfViewport := m.currId < m.topBoundId
-	if atTopOfViewport {
+	// Scroll up when cursor reaches the top bound, similar to NextItem logic
+	atTopOfViewport := m.currId <= m.topBoundId
+	if atTopOfViewport && m.topBoundId > 0 {
 		m.topBoundId -= 1
 		m.bottomBoundId -= 1
 		m.viewport.LineUp(m.ListItemHeight)
@@ -111,12 +112,23 @@ func (m *Model) PrevItem() int {
 
 func (m *Model) FirstItem() int {
 	m.currId = 0
+	m.topBoundId = 0
+	m.bottomBoundId = utils.Min(m.NumCurrentItems-1, m.getNumPrsPerPage()-1)
 	m.viewport.GotoTop()
 	return m.currId
 }
 
 func (m *Model) LastItem() int {
 	m.currId = m.NumCurrentItems - 1
+	// Update bounds to reflect bottom position
+	itemsPerPage := m.getNumPrsPerPage()
+	if m.NumCurrentItems > itemsPerPage {
+		m.bottomBoundId = m.NumCurrentItems - 1
+		m.topBoundId = m.NumCurrentItems - itemsPerPage
+	} else {
+		m.topBoundId = 0
+		m.bottomBoundId = m.NumCurrentItems - 1
+	}
 	m.viewport.GotoBottom()
 	return m.currId
 }

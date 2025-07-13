@@ -27,6 +27,7 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/ui/components/footer"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/issuesidebar"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/issuessection"
+	"github.com/dlvhdr/gh-dash/v4/ui/components/notificationssection"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/prsidebar"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/prssection"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/reposection"
@@ -50,6 +51,7 @@ type Model struct {
 	repo          section.Section
 	prs           []section.Section
 	issues        []section.Section
+	notifications []section.Section
 	tabs          tabs.Model
 	ctx           *context.ProgramContext
 	taskSpinner   spinner.Model
@@ -143,6 +145,7 @@ func (m *Model) initScreen() tea.Msg {
 		cfg.Keybindings.Issues,
 		cfg.Keybindings.Prs,
 		cfg.Keybindings.Branches,
+		cfg.Keybindings.Notifications,
 	)
 	if err != nil {
 		showError(err)
@@ -747,6 +750,9 @@ func (m *Model) updateSection(id int, sType string, msg tea.Msg) (cmd tea.Cmd) {
 	case issuessection.SectionType:
 		updatedSection, cmd = m.issues[id].Update(msg)
 		m.issues[id] = updatedSection
+	case notificationssection.SectionType:
+		updatedSection, cmd = m.notifications[id].Update(msg)
+		m.notifications[id] = updatedSection
 	}
 
 	return cmd
@@ -815,6 +821,10 @@ func (m *Model) fetchAllViewSections() ([]section.Section, tea.Cmd) {
 		s, prcmds := prssection.FetchAllSections(m.ctx, m.prs)
 		cmds = append(cmds, prcmds)
 		return s, tea.Batch(cmds...)
+	} else if m.ctx.View == config.NotificationsView {
+		s, notificationcmds := notificationssection.FetchAllSections(m.ctx)
+		cmds = append(cmds, notificationcmds)
+		return s, tea.Batch(cmds...)
 	} else {
 		s, issuecmds := issuessection.FetchAllSections(m.ctx)
 		cmds = append(cmds, issuecmds)
@@ -827,6 +837,8 @@ func (m *Model) getCurrentViewSections() []section.Section {
 		return []section.Section{m.repo}
 	} else if m.ctx.View == config.PRsView {
 		return m.prs
+	} else if m.ctx.View == config.NotificationsView {
+		return m.notifications
 	} else {
 		return m.issues
 	}
@@ -836,6 +848,8 @@ func (m *Model) getCurrentViewDefaultSection() int {
 	if m.ctx.View == config.RepoView {
 		return 0
 	} else if m.ctx.View == config.PRsView {
+		return 1
+	} else if m.ctx.View == config.NotificationsView {
 		return 1
 	} else {
 		return 1
@@ -858,6 +872,18 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 			time.Now(),
 		)
 		m.prs = append([]section.Section{&search}, newSections...)
+	} else if m.ctx.View == config.NotificationsView {
+		search := notificationssection.NewModel(
+			0,
+			m.ctx,
+			config.NotificationsSectionConfig{
+				Title:   "",
+				Filters: "",
+			},
+			time.Now(),
+			time.Now(),
+		)
+		m.notifications = append([]section.Section{&search}, newSections...)
 	} else {
 		search := issuessection.NewModel(
 			0,
@@ -883,6 +909,8 @@ func (m *Model) switchSelectedView() config.ViewType {
 		case m.ctx.View == config.PRsView:
 			return config.IssuesView
 		case m.ctx.View == config.IssuesView:
+			return config.NotificationsView
+		case m.ctx.View == config.NotificationsView:
 			return config.RepoView
 		}
 	}
@@ -890,6 +918,10 @@ func (m *Model) switchSelectedView() config.ViewType {
 	switch true {
 	case m.ctx.View == config.PRsView:
 		return config.IssuesView
+	case m.ctx.View == config.IssuesView:
+		return config.NotificationsView
+	case m.ctx.View == config.NotificationsView:
+		return config.PRsView
 	default:
 		return config.PRsView
 	}
