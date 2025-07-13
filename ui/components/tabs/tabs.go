@@ -52,8 +52,10 @@ func (m Model) View(ctx *context.ProgramContext) string {
 	sectionTitles := make([]string, 0, len(m.sectionsConfigs))
 	for i, section := range m.sectionsConfigs {
 		title := section.Title
-		// handle search section
-		if i > 0 {
+		// For notifications view, show counts for all sections
+		// For other views, skip the search section (index 0)
+		showCount := ctx.View == config.NotificationsView || i > 0
+		if showCount && ctx.Config.Theme.Ui.SectionsShowCount {
 			if m.sectionCounts[i].IsLoading {
 				title = fmt.Sprintf("%s %s", title, m.sectionCounts[i].spinner.View())
 			} else {

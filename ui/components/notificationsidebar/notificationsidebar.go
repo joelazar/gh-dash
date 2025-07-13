@@ -1,0 +1,168 @@
+package notificationsidebar
+
+import (
+	"fmt"
+
+	"github.com/charmbracelet/log"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/dlvhdr/gh-dash/v4/data"
+	"github.com/dlvhdr/gh-dash/v4/ui/constants"
+	"github.com/dlvhdr/gh-dash/v4/ui/context"
+	"github.com/dlvhdr/gh-dash/v4/utils"
+)
+
+const SectionName = "notification_sidebar"
+
+type Model struct {
+	ctx          *context.ProgramContext
+	notification *data.Notification
+	width        int
+}
+
+func NewModel(ctx *context.ProgramContext) Model {
+	return Model{
+		ctx:   ctx,
+		width: 50,
+	}
+}
+
+func (m *Model) SetNotification(notification *data.Notification) {
+	m.notification = notification
+}
+
+func (m *Model) SetWidth(width int) {
+	m.width = width
+}
+
+func (m *Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	return *m, nil
+}
+
+func (m *Model) View() string {
+	if m.notification == nil {
+		return "No notification selected"
+	}
+
+	content := fmt.Sprintf("**%s**\n\n", m.notification.Title)
+	content += fmt.Sprintf("Repository: %s\n", m.notification.Repository)
+	content += fmt.Sprintf("Type: %s\n", m.notification.Type)
+	content += fmt.Sprintf("Reason: %s\n", utils.FormatNotificationReason(m.notification.Reason))
+	content += fmt.Sprintf("Unread: %v\n", m.notification.Unread)
+	content += fmt.Sprintf("Updated: %s\n", m.notification.UpdatedAt.Format("2006-01-02 15:04"))
+	content += fmt.Sprintf("URL: %s\n\n", m.notification.URL)
+
+	// Add action help
+	content += "**Actions:**\n"
+	content += "r - Mark as read\n"
+	content += "u - Unsubscribe\n"
+	content += "b - Bookmark\n"
+	content += "d - Mark as done\n"
+	content += "t - Toggle read/unread\n"
+	content += "o - Open in browser\n"
+
+	return lipgloss.NewStyle().Width(m.width).Render(content)
+}
+
+// Bookmark bookmarks the current notification
+func (m *Model) Bookmark() tea.Cmd {
+	if m.notification == nil {
+		log.Debug("Bookmark: no notification selected")
+		return nil
+	}
+
+	log.Debug("Bookmark: bookmarking notification", "threadID", m.notification.ThreadID)
+
+	return func() tea.Msg {
+		err := data.BookmarkNotification(m.notification.ThreadID)
+		if err != nil {
+			log.Debug("Bookmark: failed to bookmark", "err", err)
+			return constants.ErrMsg{Err: err}
+		}
+		log.Debug("Bookmark: successfully bookmarked, returning action message")
+		return NotificationActionMsg{
+			Action:   "bookmark",
+			ThreadID: m.notification.ThreadID,
+		}
+	}
+}
+
+// MarkAsDone marks the current notification as done
+func (m *Model) MarkAsDone() tea.Cmd {
+	if m.notification == nil {
+		log.Debug("MarkAsDone: no notification selected")
+		return nil
+	}
+
+	log.Debug("MarkAsDone: marking notification as done", "threadID", m.notification.ThreadID)
+
+	return func() tea.Msg {
+		err := data.MarkNotificationAsDone(m.notification.ThreadID)
+		if err != nil {
+			log.Debug("MarkAsDone: failed to mark as done", "err", err)
+			return constants.ErrMsg{Err: err}
+		}
+		log.Debug("MarkAsDone: successfully marked as done, returning action message")
+		return NotificationActionMsg{
+			Action:   "mark_done",
+			ThreadID: m.notification.ThreadID,
+		}
+	}
+}
+
+// ToggleReadStatus toggles the read/unread status of the notification
+func (m *Model) ToggleReadStatus() tea.Cmd {
+	if m.notification == nil {
+		log.Debug("ToggleReadStatus: no notification selected")
+		return nil
+	}
+
+	action := "mark as unread"
+	if m.notification.Unread {
+		action = "mark as read"
+	}
+	log.Debug("ToggleReadStatus: toggling notification", "action", action, "threadID", m.notification.ThreadID, "currentlyUnread", m.notification.Unread)
+
+	return func() tea.Msg {
+		var err error
+		if m.notification.Unread {
+			err = data.MarkNotificationAsRead(m.notification.ThreadID)
+		} else {
+			err = data.MarkNotificationAsUnread(m.notification.ThreadID)
+		}
+		if err != nil {
+			log.Debug("ToggleReadStatus: failed to toggle", "action", action, "err", err)
+			return constants.ErrMsg{Err: err}
+		}
+		log.Debug("ToggleReadStatus: successfully toggled read status, returning action message")
+		return NotificationActionMsg{
+			Action:   "toggle_read",
+			ThreadID: m.notification.ThreadID,
+		}
+	}
+}
+
+// OpenInBrowser opens the notification in the default browser
+func (m *Model) OpenInBrowser() tea.Cmd {
+	if m.notification == nil {
+		log.Debug("OpenInBrowser: no notification selected")
+		return nil
+	}
+	
+	if m.notification.URL == "" {
+		log.Debug("OpenInBrowser: notification has no URL", "threadID", m.notification.ThreadID)
+		return nil
+	}
+
+	log.Debug("OpenInBrowser: opening notification", "threadID", m.notification.ThreadID, "url", m.notification.URL)
+
+	return func() tea.Msg {
+		// This will be handled by the main UI to open the browser
+		log.Debug("OpenInBrowser: returning action message for browser opening")
+		return NotificationActionMsg{
+			Action:   "open_browser",
+			ThreadID: m.notification.ThreadID,
+			URL:      m.notification.URL,
+		}
+	}
+}

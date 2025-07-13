@@ -29,9 +29,10 @@ var validate *validator.Validate
 type ViewType string
 
 const (
-	PRsView    ViewType = "prs"
-	IssuesView ViewType = "issues"
-	RepoView   ViewType = "repo"
+	PRsView           ViewType = "prs"
+	IssuesView        ViewType = "issues"
+	RepoView          ViewType = "repo"
+	NotificationsView ViewType = "notifications"
 )
 
 type SectionConfig struct {
@@ -54,6 +55,12 @@ type IssuesSectionConfig struct {
 	Filters string
 	Limit   *int               `yaml:"limit,omitempty"`
 	Layout  IssuesLayoutConfig `yaml:"layout,omitempty"`
+}
+
+type NotificationsSectionConfig struct {
+	Title   string
+	Filters string
+	Limit   *int `yaml:"limit,omitempty"`
 }
 
 type PreviewConfig struct {
@@ -94,9 +101,19 @@ type IssuesLayoutConfig struct {
 	Reactions   ColumnConfig `yaml:"reactions,omitempty"`
 }
 
+type NotificationsLayoutConfig struct {
+	UpdatedAt ColumnConfig `yaml:"updatedAt,omitempty"`
+	State     ColumnConfig `yaml:"state,omitempty"`
+	Repo      ColumnConfig `yaml:"repo,omitempty"`
+	Title     ColumnConfig `yaml:"title,omitempty"`
+	Reason    ColumnConfig `yaml:"reason,omitempty"`
+	Type      ColumnConfig `yaml:"type,omitempty"`
+}
+
 type LayoutConfig struct {
-	Prs    PrsLayoutConfig    `yaml:"prs,omitempty"`
-	Issues IssuesLayoutConfig `yaml:"issues,omitempty"`
+	Prs           PrsLayoutConfig           `yaml:"prs,omitempty"`
+	Issues        IssuesLayoutConfig        `yaml:"issues,omitempty"`
+	Notifications NotificationsLayoutConfig `yaml:"notifications,omitempty"`
 }
 
 type Defaults struct {
@@ -104,6 +121,7 @@ type Defaults struct {
 	PrsLimit               int           `yaml:"prsLimit"`
 	PrApproveComment       string        `yaml:"prApproveComment,omitempty"`
 	IssuesLimit            int           `yaml:"issuesLimit"`
+	NotificationsLimit     int           `yaml:"notificationsLimit"`
 	View                   ViewType      `yaml:"view"`
 	Layout                 LayoutConfig  `yaml:"layout,omitempty"`
 	RefetchIntervalMinutes int           `yaml:"refetchIntervalMinutes,omitempty"`
@@ -139,10 +157,11 @@ func (kb Keybinding) NewBinding(previous *key.Binding) key.Binding {
 }
 
 type Keybindings struct {
-	Universal []Keybinding `yaml:"universal"`
-	Issues    []Keybinding `yaml:"issues"`
-	Prs       []Keybinding `yaml:"prs"`
-	Branches  []Keybinding `yaml:"branches"`
+	Universal     []Keybinding `yaml:"universal"`
+	Issues        []Keybinding `yaml:"issues"`
+	Prs           []Keybinding `yaml:"prs"`
+	Branches      []Keybinding `yaml:"branches"`
+	Notifications []Keybinding `yaml:"notifications"`
 }
 
 type Pager struct {
@@ -221,17 +240,18 @@ type ThemeConfig struct {
 }
 
 type Config struct {
-	PRSections             []PrsSectionConfig    `yaml:"prSections"`
-	IssuesSections         []IssuesSectionConfig `yaml:"issuesSections"`
-	Repo                   RepoConfig            `yaml:"repo"`
-	Defaults               Defaults              `yaml:"defaults"`
-	Keybindings            Keybindings           `yaml:"keybindings"`
-	RepoPaths              map[string]string     `yaml:"repoPaths"`
-	Theme                  *ThemeConfig          `yaml:"theme,omitempty" validate:"omitempty"`
-	Pager                  Pager                 `yaml:"pager"`
-	ConfirmQuit            bool                  `yaml:"confirmQuit"`
-	ShowAuthorIcons        bool                  `yaml:"showAuthorIcons"`
-	SmartFilteringAtLaunch bool                  `yaml:"smartFilteringAtLaunch" default:"true"`
+	PRSections             []PrsSectionConfig           `yaml:"prSections"`
+	IssuesSections         []IssuesSectionConfig        `yaml:"issuesSections"`
+	NotificationsSections  []NotificationsSectionConfig `yaml:"notificationsSections"`
+	Repo                   RepoConfig                   `yaml:"repo"`
+	Defaults               Defaults                     `yaml:"defaults"`
+	Keybindings            Keybindings                  `yaml:"keybindings"`
+	RepoPaths              map[string]string            `yaml:"repoPaths"`
+	Theme                  *ThemeConfig                 `yaml:"theme,omitempty" validate:"omitempty"`
+	Pager                  Pager                        `yaml:"pager"`
+	ConfirmQuit            bool                         `yaml:"confirmQuit"`
+	ShowAuthorIcons        bool                         `yaml:"showAuthorIcons"`
+	SmartFilteringAtLaunch bool                         `yaml:"smartFilteringAtLaunch" default:"true"`
 }
 
 type configError struct {
@@ -252,6 +272,7 @@ func (parser ConfigParser) getDefaultConfig() Config {
 			PrsLimit:               20,
 			PrApproveComment:       "LGTM",
 			IssuesLimit:            20,
+			NotificationsLimit:     50,
 			View:                   PRsView,
 			RefetchIntervalMinutes: 30,
 			Layout: LayoutConfig{
@@ -304,6 +325,23 @@ func (parser ConfigParser) getDefaultConfig() Config {
 						Hidden: utils.BoolPtr(true),
 					},
 				},
+				Notifications: NotificationsLayoutConfig{
+					UpdatedAt: ColumnConfig{
+						Width: utils.IntPtr(12),
+					},
+					State: ColumnConfig{
+						Width: utils.IntPtr(4),
+					},
+					Repo: ColumnConfig{
+						Width: utils.IntPtr(30),
+					},
+					Reason: ColumnConfig{
+						Width: utils.IntPtr(20),
+					},
+					Type: ColumnConfig{
+						Width: utils.IntPtr(18),
+					},
+				},
 			},
 		},
 		Repo: RepoConfig{
@@ -336,6 +374,16 @@ func (parser ConfigParser) getDefaultConfig() Config {
 			{
 				Title:   "Involved",
 				Filters: "is:open involves:@me -author:@me",
+			},
+		},
+		NotificationsSections: []NotificationsSectionConfig{
+			{
+				Title:   "Unread",
+				Filters: "is:unread",
+			},
+			{
+				Title:   "All",
+				Filters: "",
 			},
 		},
 		Keybindings: Keybindings{
