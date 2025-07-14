@@ -38,6 +38,7 @@ func (m *Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return *m, nil
 }
 
+// TODO: decide to improve this or disable completely
 func (m *Model) View() string {
 	if m.notification == nil {
 		return "No notification selected"
@@ -51,16 +52,36 @@ func (m *Model) View() string {
 	content += fmt.Sprintf("Updated: %s\n", m.notification.UpdatedAt.Format("2006-01-02 15:04"))
 	content += fmt.Sprintf("URL: %s\n\n", m.notification.URL)
 
-	// Add action help
-	content += "**Actions:**\n"
-	content += "r - Mark as read\n"
-	content += "u - Unsubscribe\n"
-	content += "b - Bookmark\n"
-	content += "d - Mark as done\n"
-	content += "t - Toggle read/unread\n"
-	content += "o - Open in browser\n"
-
 	return lipgloss.NewStyle().Width(m.width).Render(content)
+}
+
+type NotificationActionMsg struct {
+	Action   string
+	ThreadID string
+	URL      string // Optional, used for browser actions
+}
+
+// MarkAsDone marks the current notification as read
+func (m *Model) MarkAsRead() tea.Cmd {
+	if m.notification == nil {
+		log.Debug("MarkRead: no notification selected")
+		return nil
+	}
+
+	log.Debug("MarkRead: marking notification as read", "threadID", m.notification.ThreadID)
+
+	return func() tea.Msg {
+		err := data.MarkNotificationAsRead(m.notification.ThreadID)
+		if err != nil {
+			log.Debug("MarkRead: failed to mark as read", "err", err)
+			return constants.ErrMsg{Err: err}
+		}
+		log.Debug("MarkRead: successfully marked as read, returning action message")
+		return NotificationActionMsg{
+			Action:   "mark_read",
+			ThreadID: m.notification.ThreadID,
+		}
+	}
 }
 
 // MarkAsDone marks the current notification as done
@@ -86,8 +107,9 @@ func (m *Model) MarkAsDone() tea.Cmd {
 	}
 }
 
-// ToggleReadStatus toggles the read/unread status of the notification
-func (m *Model) ToggleReadStatus() tea.Cmd {
+// ToggleSubscription toggles the subscription of the notification
+// TODO: update this
+func (m *Model) ToggleSubscription() tea.Cmd {
 	if m.notification == nil {
 		log.Debug("ToggleReadStatus: no notification selected")
 		return nil

@@ -447,20 +447,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, cmd
 
-			case key.Matches(msg, keys.NotificationKeys.MarkRead):
-				if currRowData != nil && currSection != nil {
-					currSection.SetPromptConfirmationAction("mark_read")
-					cmd = currSection.SetIsPromptConfirmationShown(true)
-				}
-				return m, cmd
-
-			case key.Matches(msg, keys.NotificationKeys.Unsubscribe):
-				if currRowData != nil && currSection != nil {
-					currSection.SetPromptConfirmationAction("unsubscribe")
-					cmd = currSection.SetIsPromptConfirmationShown(true)
-				}
-				return m, cmd
-
 			case key.Matches(msg, keys.PRKeys.ViewIssues):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
@@ -544,19 +530,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, m.openBrowser())
 
 			case key.Matches(msg, keys.NotificationKeys.MarkRead):
-				cmd = m.notificationSidebar.MarkRead()
-				cmds = append(cmds, cmd)
-
-			case key.Matches(msg, keys.NotificationKeys.Unsubscribe):
-				cmd = m.notificationSidebar.Unsubscribe()
+				cmd = m.notificationSidebar.MarkAsRead()
 				cmds = append(cmds, cmd)
 
 			case key.Matches(msg, keys.NotificationKeys.MarkDone):
 				cmd = m.notificationSidebar.MarkAsDone()
 				cmds = append(cmds, cmd)
 
-			case key.Matches(msg, keys.NotificationKeys.ToggleRead):
-				cmd = m.notificationSidebar.ToggleReadStatus()
+			case key.Matches(msg, keys.NotificationKeys.ToggleSubscription):
+				cmd = m.notificationSidebar.ToggleSubscription()
 				cmds = append(cmds, cmd)
 
 			case key.Matches(msg, keys.NotificationKeys.OpenBrowser):

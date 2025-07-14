@@ -10,13 +10,11 @@ import (
 )
 
 type NotificationKeyMap struct {
-	MarkRead    key.Binding
-	Unsubscribe key.Binding
-	Bookmark    key.Binding
-	MarkDone    key.Binding
-	ToggleRead  key.Binding
-	OpenBrowser key.Binding
-	ViewSwitch  key.Binding
+	MarkDone           key.Binding
+	MarkRead           key.Binding
+	OpenBrowser        key.Binding
+	ToggleSubscription key.Binding
+	ViewSwitch         key.Binding
 }
 
 var NotificationKeys = NotificationKeyMap{
@@ -24,25 +22,17 @@ var NotificationKeys = NotificationKeyMap{
 		key.WithKeys("r"),
 		key.WithHelp("r", "mark as read"),
 	),
-	Unsubscribe: key.NewBinding(
-		key.WithKeys("u"),
-		key.WithHelp("u", "unsubscribe"),
-	),
-	Bookmark: key.NewBinding(
-		key.WithKeys("b"),
-		key.WithHelp("b", "bookmark"),
-	),
 	MarkDone: key.NewBinding(
 		key.WithKeys("d"),
 		key.WithHelp("d", "mark as done"),
 	),
-	ToggleRead: key.NewBinding(
-		key.WithKeys("t"),
-		key.WithHelp("t", "toggle read/unread"),
-	),
 	OpenBrowser: key.NewBinding(
 		key.WithKeys("o"),
 		key.WithHelp("o", "open in browser"),
+	),
+	ToggleSubscription: key.NewBinding(
+		key.WithKeys("u"),
+		key.WithHelp("u", "toggle subscription"),
 	),
 	ViewSwitch: key.NewBinding(
 		key.WithKeys("s"),
@@ -53,10 +43,8 @@ var NotificationKeys = NotificationKeyMap{
 func NotificationFullHelp() []key.Binding {
 	return []key.Binding{
 		NotificationKeys.MarkRead,
-		NotificationKeys.Unsubscribe,
-		NotificationKeys.Bookmark,
 		NotificationKeys.MarkDone,
-		NotificationKeys.ToggleRead,
+		NotificationKeys.ToggleSubscription,
 		NotificationKeys.OpenBrowser,
 		NotificationKeys.ViewSwitch,
 	}
@@ -94,14 +82,10 @@ func rebindNotificationKeys(keys []config.Keybinding) error {
 		switch notificationKey.Builtin {
 		case "markRead":
 			key = &NotificationKeys.MarkRead
-		case "unsubscribe":
-			key = &NotificationKeys.Unsubscribe
-		case "bookmark":
-			key = &NotificationKeys.Bookmark
 		case "markDone":
 			key = &NotificationKeys.MarkDone
-		case "toggleRead":
-			key = &NotificationKeys.ToggleRead
+		case "toggleSubscription":
+			key = &NotificationKeys.ToggleSubscription
 		case "openBrowser":
 			key = &NotificationKeys.OpenBrowser
 		case "viewSwitch":
