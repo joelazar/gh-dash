@@ -2,7 +2,7 @@ package notificationssection
 
 import (
 	"time"
-	
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dlvhdr/gh-dash/v4/data"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/section"
@@ -14,7 +14,7 @@ func FetchAllSections(ctx *context.ProgramContext) ([]section.Section, tea.Cmd) 
 	sectionConfigs := ctx.Config.NotificationsSections
 	fetchNotificationsCmds := make([]tea.Cmd, 0, len(sectionConfigs))
 	sections := make([]section.Section, 0, len(sectionConfigs))
-	
+
 	for i, sectionConfig := range sectionConfigs {
 		sectionModel := NewModelWithConfig(
 			i+1, // 0 is reserved for the search section
@@ -23,13 +23,13 @@ func FetchAllSections(ctx *context.ProgramContext) ([]section.Section, tea.Cmd) 
 			time.Now(),
 			time.Now(),
 		)
-		
+
 		// Calculate the limit to use for API calls
 		limit := ctx.Config.Defaults.NotificationsLimit
 		if sectionConfig.Limit != nil {
 			limit = *sectionConfig.Limit
 		}
-		
+
 		sections = append(sections, &sectionModel)
 		fetchNotificationsCmds = append(fetchNotificationsCmds, FetchNotifications(i+1, limit, sectionConfig.Filters))
 	}
@@ -70,7 +70,7 @@ func FetchNotificationsPaginated(sectionId int, page int, limit int, searchQuery
 
 type NotificationsFetchedMsg struct {
 	SectionId     int
-	Notifications []*data.Notification
+	Notifications []data.Notification
 	Page          int
 	IsFirstPage   bool
 }

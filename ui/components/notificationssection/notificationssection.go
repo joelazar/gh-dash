@@ -20,7 +20,7 @@ const SectionName = "notifications"
 
 type Model struct {
 	section.BaseModel
-	Notifications []*data.Notification
+	Notifications []data.Notification
 	CurrentPage   int
 	HasNextPage   bool
 }
@@ -40,7 +40,7 @@ func NewModel(id int, ctx *context.ProgramContext) Model {
 			CreatedAt:   time.Now(),
 		},
 	)
-	m.Notifications = []*data.Notification{}
+	m.Notifications = []data.Notification{}
 	m.CurrentPage = 1
 	m.HasNextPage = true
 	return m
@@ -61,7 +61,7 @@ func NewModelWithConfig(id int, ctx *context.ProgramContext, cfg config.Notifica
 			CreatedAt:   createdAt,
 		},
 	)
-	m.Notifications = []*data.Notification{}
+	m.Notifications = []data.Notification{}
 	m.CurrentPage = 1
 	m.HasNextPage = true
 	return m
@@ -133,7 +133,7 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 						statusIcon,
 						n.Repository,
 						n.Title,
-						utils.FormatNotificationReason(n.Reason),
+						n.Reason.Format(),
 						typeIcon + " " + n.Type,
 						n.UpdatedAt.Format("2006-01-02"),
 					}
@@ -154,7 +154,7 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 	return &m, cmd
 }
 
-func (m *Model) SetNotifications(notifications []*data.Notification) {
+func (m *Model) SetNotifications(notifications []data.Notification) {
 	m.Notifications = notifications
 	rows := make([]table.Row, len(notifications))
 	for i, n := range notifications {
@@ -169,7 +169,7 @@ func (m *Model) SetNotifications(notifications []*data.Notification) {
 			statusIcon,
 			n.Repository,
 			n.Title,
-			utils.FormatNotificationReason(n.Reason),
+			n.Reason.Format(),
 			typeIcon + " " + n.Type,
 			n.UpdatedAt.Format("2006-01-02"),
 		}
@@ -250,13 +250,13 @@ func (m Model) FetchNextPageSectionRows() []tea.Cmd {
 	}
 	// Increment the page for the next fetch
 	nextPage := m.CurrentPage + 1
-	
+
 	// Calculate the limit to use - section-specific limit or default
 	limit := m.Ctx.Config.Defaults.NotificationsLimit
 	if m.Config.Limit != nil {
 		limit = *m.Config.Limit
 	}
-	
+
 	return []tea.Cmd{FetchNotificationsPaginated(m.Id, nextPage, limit, m.GetFilters())}
 }
 
@@ -275,7 +275,7 @@ func (m Model) BuildRows() []table.Row {
 			statusIcon,
 			n.Repository,
 			n.Title,
-			utils.FormatNotificationReason(n.Reason),
+			n.Reason.Format(),
 			typeIcon + " " + n.Type,
 			n.UpdatedAt.Format("2006-01-02"),
 		}
@@ -318,12 +318,13 @@ func (m *Model) SetIsLoading(val bool) {
 }
 
 // getNotificationTypeIcon returns an appropriate icon for the notification type
+// TODO: consider moving this to a method instead
 func getNotificationTypeIcon(notificationType string) string {
 	switch notificationType {
 	case "PullRequest":
 		return constants.OpenIcon // Use PR open icon
 	case "Issue":
-		return constants.OpenIcon // Use issue open icon  
+		return constants.OpenIcon // Use issue open icon
 	case "Discussion":
 		return constants.CommentIcon // Use comment icon for discussions
 	case "Release":
@@ -340,10 +341,8 @@ func getNotificationTypeIcon(notificationType string) string {
 }
 
 // getNotificationStatusIcon returns an icon representing bookmark/subscription status
-func getNotificationStatusIcon(n *data.Notification) string {
-	if n.Bookmarked {
-		return constants.BookmarkIcon
-	}
+// TODO: consider moving this to a method instead
+func getNotificationStatusIcon(n data.Notification) string {
 	if !n.Subscribed {
 		return constants.UnsubscribedIcon
 	}

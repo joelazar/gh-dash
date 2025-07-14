@@ -3,13 +3,12 @@ package notificationsidebar
 import (
 	"fmt"
 
-	"github.com/charmbracelet/log"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 	"github.com/dlvhdr/gh-dash/v4/data"
 	"github.com/dlvhdr/gh-dash/v4/ui/constants"
 	"github.com/dlvhdr/gh-dash/v4/ui/context"
-	"github.com/dlvhdr/gh-dash/v4/utils"
 )
 
 const SectionName = "notification_sidebar"
@@ -47,7 +46,7 @@ func (m *Model) View() string {
 	content := fmt.Sprintf("**%s**\n\n", m.notification.Title)
 	content += fmt.Sprintf("Repository: %s\n", m.notification.Repository)
 	content += fmt.Sprintf("Type: %s\n", m.notification.Type)
-	content += fmt.Sprintf("Reason: %s\n", utils.FormatNotificationReason(m.notification.Reason))
+	content += fmt.Sprintf("Reason: %s\n", m.notification.Reason.Format())
 	content += fmt.Sprintf("Unread: %v\n", m.notification.Unread)
 	content += fmt.Sprintf("Updated: %s\n", m.notification.UpdatedAt.Format("2006-01-02 15:04"))
 	content += fmt.Sprintf("URL: %s\n\n", m.notification.URL)
@@ -62,29 +61,6 @@ func (m *Model) View() string {
 	content += "o - Open in browser\n"
 
 	return lipgloss.NewStyle().Width(m.width).Render(content)
-}
-
-// Bookmark bookmarks the current notification
-func (m *Model) Bookmark() tea.Cmd {
-	if m.notification == nil {
-		log.Debug("Bookmark: no notification selected")
-		return nil
-	}
-
-	log.Debug("Bookmark: bookmarking notification", "threadID", m.notification.ThreadID)
-
-	return func() tea.Msg {
-		err := data.BookmarkNotification(m.notification.ThreadID)
-		if err != nil {
-			log.Debug("Bookmark: failed to bookmark", "err", err)
-			return constants.ErrMsg{Err: err}
-		}
-		log.Debug("Bookmark: successfully bookmarked, returning action message")
-		return NotificationActionMsg{
-			Action:   "bookmark",
-			ThreadID: m.notification.ThreadID,
-		}
-	}
 }
 
 // MarkAsDone marks the current notification as done
@@ -127,8 +103,6 @@ func (m *Model) ToggleReadStatus() tea.Cmd {
 		var err error
 		if m.notification.Unread {
 			err = data.MarkNotificationAsRead(m.notification.ThreadID)
-		} else {
-			err = data.MarkNotificationAsUnread(m.notification.ThreadID)
 		}
 		if err != nil {
 			log.Debug("ToggleReadStatus: failed to toggle", "action", action, "err", err)
@@ -148,7 +122,7 @@ func (m *Model) OpenInBrowser() tea.Cmd {
 		log.Debug("OpenInBrowser: no notification selected")
 		return nil
 	}
-	
+
 	if m.notification.URL == "" {
 		log.Debug("OpenInBrowser: notification has no URL", "threadID", m.notification.ThreadID)
 		return nil

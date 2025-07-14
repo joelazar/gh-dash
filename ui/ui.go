@@ -551,10 +551,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.notificationSidebar.Unsubscribe()
 				cmds = append(cmds, cmd)
 
-			case key.Matches(msg, keys.NotificationKeys.Bookmark):
-				cmd = m.notificationSidebar.Bookmark()
-				cmds = append(cmds, cmd)
-
 			case key.Matches(msg, keys.NotificationKeys.MarkDone):
 				cmd = m.notificationSidebar.MarkAsDone()
 				cmds = append(cmds, cmd)

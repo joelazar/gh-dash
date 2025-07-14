@@ -59,19 +59,20 @@ const (
 	UnknownRoleIcon = "󱐡" // \udb85\udc21 nf-md-incognito_circle
 
 	// Notification icons
-	NotificationIcon     = ""  // Bell icon for notifications
-	UnreadIcon          = "●"  // Filled circle for unread
-	ReadIcon            = " "  // Empty space for read
-	ReviewRequestedIcon = "󰯢"  // Review icon
+	// TODO: finish this
+	NotificationIcon    = ""  // Bell icon for notifications
+	UnreadIcon          = "●" // Filled circle for unread
+	ReadIcon            = " " // Empty space for read
+	ReviewRequestedIcon = "󰯢" // Review icon
 	MentionIcon         = ""  // At symbol for mentions
-	AssignIcon          = "󱡢"  // Person plus for assignments
+	AssignIcon          = "󱡢" // Person plus for assignments
 	CommentNotifIcon    = ""  // Comment icon for comments
-	UpdatedIcon         = "󱦻"  // Clock icon for updates
-	CreatedIcon         = "󱡢"  // Calendar icon for creation
+	UpdatedIcon         = "󱦻" // Clock icon for updates
+	CreatedIcon         = "󱡢" // Calendar icon for creation
 	RepoIcon            = ""  // Repository icon
 	ReasonIcon          = ""  // Tag icon for reasons
 	TypeIcon            = ""  // File icon for types
-	BookmarkIcon        = "󰃃"  // Bookmark icon
+	BookmarkIcon        = "󰃃" // Bookmark icon
 	SubscribedIcon      = ""  // Eye icon for subscribed
-	UnsubscribedIcon    = "󰤄"  // Eye off icon for unsubscribed
+	UnsubscribedIcon    = "󰤄" // Eye off icon for unsubscribed
 )
