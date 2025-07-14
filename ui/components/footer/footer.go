@@ -126,18 +126,12 @@ func (m *Model) UpdateProgramContext(ctx *context.ProgramContext) {
 }
 
 func (m *Model) renderViewButton(view config.ViewType) string {
-	var v string
-	switch view {
-	case config.PRsView:
-		v = " 🔄 PRs"
-	case config.IssuesView:
-		v = " 🐛 Issues"
-	case config.NotificationsView:
-		v = " 🔔 Notifications "
-	case config.RepoView:
-		v = " 📁 Repo"
-	default:
-		v = " ❓ Unknown"
+	v := " PRs"
+	if view == config.IssuesView {
+		v = " Issues"
+	}
+	if view == config.NotificationsView {
+		v = " Notifications"
 	}
 
 	if m.ctx.View == view {
