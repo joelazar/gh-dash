@@ -131,19 +131,17 @@ func SubscribeForNotification(threadID string) error {
 	endpoint := fmt.Sprintf("notifications/threads/%s/subscription", threadID)
 	log.Debug("SubscribeForNotification: calling PUT", "endpoint", endpoint)
 
-	// TODO: add tags
 	var response struct {
-		Subscribed bool `json:"subscribed"`
-		Ignored    bool
+		Subscribed bool      `json:"subscribed"`
+		Ignored    bool      `json:"ignored"`
 		Reason     string    `json:"reason"`
 		CreatedAt  time.Time `json:"created_at"`
-		URL        string
-		ThreadURL  string
+		URL        string    `json:"url"`
+		ThreadURL  string    `json:"thread_url"`
 	}
 
-	// GitHub returns 204 No Content for successful unsubscribe
-	// TODO: refactor this?
-	body := strings.NewReader("{\"ignored\":false}")
+	// GitHub returns 200 OK with a response body for successful subscribe.
+	body := strings.NewReader("{\"ignored\": false}")
 	err = client.Put(endpoint, body, &response)
 	if err != nil {
 		log.Error("SubscribeForNotification: PUT failed", "err", err)
@@ -151,8 +149,8 @@ func SubscribeForNotification(threadID string) error {
 	}
 
 	if !response.Subscribed {
-		log.Error("SubscribeForNotification, didn't managed to subscribed", "repsonse", response)
-		return fmt.Errorf("subscribe didn't work")
+		log.Error("SubscribeForNotification: failed to subscribe", "response", response)
+		return fmt.Errorf("failed to subscribe to notification thread")
 	}
 
 	log.Debug("SubscribeForNotification: successfully subscribed", "response", response)

@@ -108,31 +108,28 @@ func (m *Model) MarkAsDone() tea.Cmd {
 }
 
 // ToggleSubscription toggles the subscription of the notification
-// TODO: update this
 func (m *Model) ToggleSubscription() tea.Cmd {
 	if m.notification == nil {
-		log.Debug("ToggleReadStatus: no notification selected")
+		log.Debug("ToggleSubscription: no notification selected")
 		return nil
 	}
 
-	action := "mark as unread"
-	if m.notification.Unread {
-		action = "mark as read"
-	}
-	log.Debug("ToggleReadStatus: toggling notification", "action", action, "threadID", m.notification.ThreadID, "currentlyUnread", m.notification.Unread)
+	log.Debug("ToggleSubscription: toggling subscription", "threadID", m.notification.ThreadID, "subscribed", m.notification.Subscribed)
 
 	return func() tea.Msg {
 		var err error
-		if m.notification.Unread {
-			err = data.MarkNotificationAsRead(m.notification.ThreadID)
+		if m.notification.Subscribed {
+			err = data.UnsubscribeFromNotification(m.notification.ThreadID)
+		} else {
+			err = data.SubscribeForNotification(m.notification.ThreadID)
 		}
 		if err != nil {
-			log.Debug("ToggleReadStatus: failed to toggle", "action", action, "err", err)
+			log.Error("ToggleSubscription: failed to toggle", "err", err)
 			return constants.ErrMsg{Err: err}
 		}
-		log.Debug("ToggleReadStatus: successfully toggled read status, returning action message")
+		log.Debug("ToggleSubscription: successfully toggled read status, returning action message")
 		return NotificationActionMsg{
-			Action:   "toggle_read",
+			Action:   "toggle_subscription",
 			ThreadID: m.notification.ThreadID,
 		}
 	}
