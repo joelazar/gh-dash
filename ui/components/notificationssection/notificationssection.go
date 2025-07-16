@@ -241,7 +241,7 @@ func (m Model) GetCurrRow() data.RowData {
 	if currRow >= len(m.Notifications) {
 		return nil
 	}
-	return m.Notifications[currRow]
+	return &m.Notifications[currRow]
 }
 
 func (m Model) FetchNextPageSectionRows() []tea.Cmd {
