@@ -131,7 +131,7 @@ func (m *Model) renderViewButton(view config.ViewType) string {
 		v = " Issues"
 	}
 	if view == config.NotificationsView {
-		v = " Notifications"
+		v = " Notifications "
 	}
 
 	if m.ctx.View == view {

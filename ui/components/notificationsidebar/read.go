@@ -15,7 +15,7 @@ import (
 // MarkAsDone marks the current notification as read
 func (m *Model) MarkAsRead() tea.Cmd {
 	if m.notification == nil {
-		log.Debug("MarkRead: no notification selected")
+		log.Debug("MarkAsRead: no notification selected")
 		return nil
 	}
 
@@ -30,17 +30,17 @@ func (m *Model) MarkAsRead() tea.Cmd {
 		Error:        nil,
 	}
 
-	log.Debug("MarkRead: marking notification as read", "threadID", m.notification.ThreadID)
+	log.Debug("MarkAsRead: marking notification as read", "threadID", m.notification.ThreadID)
 
 	startCmd := m.ctx.StartTask(task)
 
 	return tea.Batch(startCmd, func() tea.Msg {
 		err := data.MarkNotificationAsRead(m.notification.ThreadID)
 		if err != nil {
-			log.Debug("MarkRead: failed to mark as read", "err", err)
+			log.Debug("MarkAsRead: failed to mark as read", "err", err)
 			return constants.ErrMsg{Err: err}
 		}
-		log.Debug("MarkRead: successfully marked as read, returning action message")
+		log.Debug("MarkAsRead: successfully marked as read, returning action message")
 
 		// TODO: better pattern?
 		trueBool := true
@@ -51,7 +51,7 @@ func (m *Model) MarkAsRead() tea.Cmd {
 			TaskId:      taskId,
 			Err:         err,
 			Msg: notificationssection.UpdateNotificationMsg{
-				NotificationID: notificationID,
+				NotificationID: fmt.Sprint(notificationID),
 				IsRead:         &trueBool,
 			},
 		}
