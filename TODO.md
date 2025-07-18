@@ -1,0 +1,12 @@
+- [x] fix footer
+- [x] in the bottom the bar the data is formatted differently
+
+- [ ] refresh not working
+- [ ] initial load there are some problems of loading the notifications
+- [ ] at opening notification, set it as read on the UI - not working yet
+- [ ] how should pagination work? Right now the limit of the config is hardcoded, and would not load more data when reached. Is that okay?
+- [ ] filters cannot be updated
+- [ ] is:repo filter should be supported
+- [ ] header is not working properly, missing elements
+- [ ] only show icon, not name in columns
+- [ ] search working a bit differently - nothing to show, then when filter updated, a lot
