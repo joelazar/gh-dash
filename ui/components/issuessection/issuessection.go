@@ -106,7 +106,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		}
 
 		switch {
-
 		case key.Matches(msg, keys.IssueKeys.ToggleSmartFiltering):
 			if !m.HasRepoNameInConfiguredFilter() {
 				m.IsFilteredByCurrentRemote = !m.IsFilteredByCurrentRemote
@@ -119,7 +118,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				m.ResetRows()
 				return &m, tea.Batch(m.FetchNextPageSectionRows()...)
 			}
-
 		}
 
 	case UpdateIssueMsg:

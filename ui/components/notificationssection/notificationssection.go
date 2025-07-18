@@ -301,20 +301,26 @@ func (m Model) BuildRows() []table.Row {
 
 // GetPagerContent implements the Section interface
 func (m Model) GetPagerContent() string {
-	totalCount := len(m.Notifications)
-	if totalCount == 0 {
-		return fmt.Sprintf("%s No notifications", constants.NotificationIcon)
-	}
-	current := m.Table.GetCurrItem() + 1
+	pagerContent := ""
 	timeElapsed := utils.TimeElapsed(m.LastUpdated())
-	return fmt.Sprintf("%s Updated %s • %s %d/%d • Fetched %d",
-		constants.WaitingIcon,
-		timeElapsed,
-		"notification",
-		current,
-		totalCount,
-		totalCount,
-	)
+	if timeElapsed == "now" {
+		timeElapsed = "just now"
+	} else {
+		timeElapsed = fmt.Sprintf("~%v ago", timeElapsed)
+	}
+	if m.TotalCount > 0 {
+		pagerContent = fmt.Sprintf(
+			"%v Updated %v • %v %v/%v (fetched %v)",
+			constants.WaitingIcon,
+			timeElapsed,
+			m.SingularForm,
+			m.Table.GetCurrItem()+1,
+			m.TotalCount,
+			len(m.Table.Rows),
+		)
+	}
+	pager := m.Ctx.Styles.ListViewPort.PagerStyle.Render(pagerContent)
+	return pager
 }
 
 // GetTotalCount implements the Section interface
