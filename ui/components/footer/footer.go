@@ -131,7 +131,7 @@ func (m *Model) renderViewButton(view config.ViewType) string {
 		v = " Issues"
 	}
 	if view == config.NotificationsView {
-		v = " Notifications "
+		v = " Notifications"
 	}
 
 	if m.ctx.View == view {
@@ -155,31 +155,19 @@ func (m *Model) renderViewSwitcher(ctx *context.ProgramContext) string {
 		user = ctx.Styles.Common.FooterStyle.Render("@" + ctx.User)
 	}
 
-	viewButtons := []string{
+	view := lipgloss.JoinHorizontal(
+		lipgloss.Top,
 		ctx.Styles.ViewSwitcher.ViewsSeparator.PaddingLeft(1).Render(m.renderViewButton(config.PRsView)),
 		ctx.Styles.ViewSwitcher.ViewsSeparator.Render(" │ "),
 		m.renderViewButton(config.IssuesView),
 		ctx.Styles.ViewSwitcher.ViewsSeparator.Render(" │ "),
 		m.renderViewButton(config.NotificationsView),
-	}
-
-	// Add repo view if feature flag is enabled
-	if config.IsFeatureEnabled(config.FF_REPO_VIEW) {
-		viewButtons = append(viewButtons,
-			ctx.Styles.ViewSwitcher.ViewsSeparator.Render(" │ "),
-			m.renderViewButton(config.RepoView),
-		)
-	}
-
-	viewButtons = append(viewButtons,
-		lipgloss.NewStyle().Background(ctx.Styles.Common.FooterStyle.GetBackground()).Foreground(ctx.Styles.ViewSwitcher.ViewsSeparator.GetBackground()).Render(" "),
+		lipgloss.NewStyle().Background(ctx.Styles.Common.FooterStyle.GetBackground()).Foreground(ctx.Styles.ViewSwitcher.ViewsSeparator.GetBackground()).Render(" "),
 		repo,
 		ctx.Styles.Common.FooterStyle.Foreground(m.ctx.Theme.FaintText).Render(" • "),
 		user,
 		ctx.Styles.Common.FooterStyle.Foreground(m.ctx.Theme.FaintBorder).Render(" │"),
 	)
-
-	view := lipgloss.JoinHorizontal(lipgloss.Top, viewButtons...)
 
 	return ctx.Styles.ViewSwitcher.Root.Render(view)
 }

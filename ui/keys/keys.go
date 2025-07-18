@@ -106,45 +106,13 @@ var Keys = KeyMap{
 	Prs:           PRKeys,
 	Branches:      BranchKeys,
 	Notifications: NotificationKeys,
-	Help: key.NewBinding(
-		key.WithKeys("?"),
-		key.WithHelp("?", "help"),
-	),
-	Quit: key.NewBinding(
-		key.WithKeys("q", "ctrl+c"),
-		key.WithHelp("q", "quit"),
-	),
-	NextSection: key.NewBinding(
-		key.WithKeys("tab", "l"),
-		key.WithHelp("tab/l", "next section"),
-	),
-	PrevSection: key.NewBinding(
-		key.WithKeys("shift+tab", "h"),
-		key.WithHelp("shift+tab/h", "previous section"),
-	),
-	Search: key.NewBinding(
-		key.WithKeys("/"),
-		key.WithHelp("/", "search"),
-	),
-	Refresh: key.NewBinding(
-		key.WithKeys("R"),
-		key.WithHelp("R", "refresh"),
-	),
-	PageDown: key.NewBinding(
-		key.WithKeys("ctrl+d"),
-		key.WithHelp("ctrl+d", "page down"),
-	),
-	PageUp: key.NewBinding(
-		key.WithKeys("ctrl+u"),
-		key.WithHelp("ctrl+u", "page up"),
-	),
 	Up: key.NewBinding(
-		key.WithKeys("k", "up"),
-		key.WithHelp("k/↑", "up"),
+		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "move up"),
 	),
 	Down: key.NewBinding(
-		key.WithKeys("j", "down"),
-		key.WithHelp("j/↓", "down"),
+		key.WithKeys("down", "j"),
+		key.WithHelp("↓/j", "move down"),
 	),
 	FirstLine: key.NewBinding(
 		key.WithKeys("g", "home"),
@@ -156,11 +124,39 @@ var Keys = KeyMap{
 	),
 	TogglePreview: key.NewBinding(
 		key.WithKeys("p"),
-		key.WithHelp("p", "toggle preview"),
+		key.WithHelp("p", "open in Preview"),
 	),
 	OpenGithub: key.NewBinding(
 		key.WithKeys("o"),
-		key.WithHelp("o", "open in github"),
+		key.WithHelp("o", "open in GitHub"),
+	),
+	Refresh: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "refresh"),
+	),
+	RefreshAll: key.NewBinding(
+		key.WithKeys("R"),
+		key.WithHelp("R", "refresh all"),
+	),
+	PageDown: key.NewBinding(
+		key.WithKeys("ctrl+d"),
+		key.WithHelp("Ctrl+d", "preview page down"),
+	),
+	PageUp: key.NewBinding(
+		key.WithKeys("ctrl+u"),
+		key.WithHelp("Ctrl+u", "preview page up"),
+	),
+	NextSection: key.NewBinding(
+		key.WithKeys("right", "l"),
+		key.WithHelp("󰁔/l", "next section"),
+	),
+	PrevSection: key.NewBinding(
+		key.WithKeys("left", "h"),
+		key.WithHelp("󰁍/h", "previous section"),
+	),
+	Search: key.NewBinding(
+		key.WithKeys("/"),
+		key.WithHelp("/", "search"),
 	),
 	CopyNumber: key.NewBinding(
 		key.WithKeys("y"),
@@ -170,13 +166,13 @@ var Keys = KeyMap{
 		key.WithKeys("Y"),
 		key.WithHelp("Y", "copy url"),
 	),
-	RefreshAll: key.NewBinding(
-		key.WithKeys("ctrl+r"),
-		key.WithHelp("ctrl+r", "refresh all"),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
 	),
-	Redraw: key.NewBinding(
-		key.WithKeys("ctrl+l"),
-		key.WithHelp("ctrl+l", "redraw"),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "esc", "ctrl+c"),
+		key.WithHelp("q", "quit"),
 	),
 }
 

@@ -25,28 +25,7 @@ type Model struct {
 	HasNextPage   bool
 }
 
-func NewModel(id int, ctx *context.ProgramContext) Model {
-	m := Model{}
-	m.BaseModel = section.NewModel(
-		ctx,
-		section.NewSectionOptions{
-			Id:          id,
-			Config:      config.SectionConfig{Title: "Notifications", Filters: ""},
-			Type:        SectionType,
-			Columns:     GetSectionColumns(ctx),
-			Singular:    "Notification",
-			Plural:      "Notifications",
-			LastUpdated: time.Now(),
-			CreatedAt:   time.Now(),
-		},
-	)
-	m.Notifications = []data.Notification{}
-	m.CurrentPage = 1
-	m.HasNextPage = true
-	return m
-}
-
-func NewModelWithConfig(id int, ctx *context.ProgramContext, cfg config.NotificationsSectionConfig, lastUpdated time.Time, createdAt time.Time) Model {
+func NewModel(id int, ctx *context.ProgramContext, cfg config.NotificationsSectionConfig, lastUpdated time.Time, createdAt time.Time) Model {
 	m := Model{}
 	m.BaseModel = section.NewModel(
 		ctx,
@@ -120,7 +99,7 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		if msg.SectionId == m.Id {
 			if msg.IsFirstPage {
 				// Replace all notifications for first page
-				m.SetNotifications(msg.Notifications)
+				m.SetRows(msg.Notifications)
 				m.CurrentPage = 1
 			} else {
 				// Append notifications for subsequent pages
@@ -191,7 +170,7 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 	return &m, cmd
 }
 
-func (m *Model) SetNotifications(notifications []data.Notification) {
+func (m *Model) SetRows(notifications []data.Notification) {
 	m.Notifications = notifications
 	rows := make([]table.Row, len(notifications))
 	for i, n := range notifications {

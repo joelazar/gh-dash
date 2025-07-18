@@ -372,9 +372,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, scmd
 
 			case key.Matches(msg, m.keys.OpenGithub):
-				if currSection != nil {
-					cmds = append(cmds, m.openBrowser())
-				}
+				cmds = append(cmds, m.openBrowser())
 
 			case key.Matches(msg, keys.PRKeys.Approve):
 				m.prSidebar.GoToFirstTab()
@@ -717,16 +715,17 @@ func (m Model) View() string {
 	content := "No sections defined"
 	currSection := m.getCurrSection()
 	if currSection != nil {
-		if m.ctx.View == config.NotificationsView {
-			// For notifications view, don't show sidebar to maximize table width
-			content = m.getCurrSection().View()
-		} else {
-			content = lipgloss.JoinHorizontal(
-				lipgloss.Top,
-				m.getCurrSection().View(),
-				m.sidebar.View(),
-			)
-		}
+		// TODO: Remove this for now
+		// if m.ctx.View == config.NotificationsView {
+		// 	// For notifications view, don't show sidebar to maximize table width
+		// 	content = m.getCurrSection().View()
+		// } else {
+		content = lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			m.getCurrSection().View(),
+			m.sidebar.View(),
+		)
+		// }
 	}
 	s.WriteString(content)
 	s.WriteString("\n")
@@ -829,7 +828,7 @@ func (m *Model) updateCurrentSection(msg tea.Msg) (cmd tea.Cmd) {
 
 func (m *Model) syncMainContentWidth() {
 	sideBarOffset := 0
-	if m.sidebar.IsOpen && m.ctx.View != config.NotificationsView {
+	if m.sidebar.IsOpen {
 		sideBarOffset = m.ctx.Config.Defaults.Preview.Width
 	}
 	m.ctx.MainContentWidth = m.ctx.ScreenWidth - sideBarOffset
@@ -861,8 +860,7 @@ func (m *Model) syncSidebar() tea.Cmd {
 		m.sidebar.SetContent(m.issueSidebar.View())
 	case *data.Notification:
 		m.notificationSidebar.SetSectionId(m.currSectionId)
-		// TODO: rename to setrow
-		m.notificationSidebar.SetNotification(row)
+		m.notificationSidebar.SetRow(row)
 		m.notificationSidebar.SetWidth(width)
 		m.sidebar.SetContent(m.notificationSidebar.View())
 	}
@@ -930,7 +928,7 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 			0,
 			m.ctx,
 			config.PrsSectionConfig{
-				Title:   "",
+				Title:   "",
 				Filters: "archived:false",
 			},
 			time.Now(),
@@ -942,7 +940,7 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 			0,
 			m.ctx,
 			config.IssuesSectionConfig{
-				Title:   "",
+				Title:   "",
 				Filters: "",
 			},
 			time.Now(),
@@ -953,6 +951,12 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 		search := notificationssection.NewModel(
 			0,
 			m.ctx,
+			config.NotificationsSectionConfig{
+				Title:   "",
+				Filters: "",
+			},
+			time.Now(),
+			time.Now(),
 		)
 		m.notifications = append([]section.Section{&search}, newSections...)
 	}

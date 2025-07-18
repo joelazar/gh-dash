@@ -16,7 +16,7 @@ func FetchAllSections(ctx *context.ProgramContext) ([]section.Section, tea.Cmd) 
 	sections := make([]section.Section, 0, len(sectionConfigs))
 
 	for i, sectionConfig := range sectionConfigs {
-		sectionModel := NewModelWithConfig(
+		sectionModel := NewModel(
 			i+1, // 0 is reserved for the search section
 			ctx,
 			sectionConfig,

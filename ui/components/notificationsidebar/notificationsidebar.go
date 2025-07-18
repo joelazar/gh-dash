@@ -25,7 +25,7 @@ func NewModel(ctx *context.ProgramContext) Model {
 	}
 }
 
-func (m *Model) SetNotification(notification *data.Notification) {
+func (m *Model) SetRow(notification *data.Notification) {
 	m.notification = notification
 }
 
