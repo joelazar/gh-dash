@@ -12,7 +12,6 @@ import (
 type NotificationKeyMap struct {
 	MarkDone           key.Binding
 	MarkRead           key.Binding
-	OpenBrowser        key.Binding
 	ToggleSubscription key.Binding
 	ViewSwitch         key.Binding
 }
@@ -25,10 +24,6 @@ var NotificationKeys = NotificationKeyMap{
 	MarkDone: key.NewBinding(
 		key.WithKeys("d"),
 		key.WithHelp("d", "mark as done"),
-	),
-	OpenBrowser: key.NewBinding(
-		key.WithKeys("o"),
-		key.WithHelp("o", "open in browser"),
 	),
 	ToggleSubscription: key.NewBinding(
 		key.WithKeys("u"),
@@ -45,7 +40,6 @@ func NotificationFullHelp() []key.Binding {
 		NotificationKeys.MarkRead,
 		NotificationKeys.MarkDone,
 		NotificationKeys.ToggleSubscription,
-		NotificationKeys.OpenBrowser,
 		NotificationKeys.ViewSwitch,
 	}
 }
@@ -86,8 +80,6 @@ func rebindNotificationKeys(keys []config.Keybinding) error {
 			key = &NotificationKeys.MarkDone
 		case "toggleSubscription":
 			key = &NotificationKeys.ToggleSubscription
-		case "openBrowser":
-			key = &NotificationKeys.OpenBrowser
 		case "viewSwitch":
 			key = &NotificationKeys.ViewSwitch
 		default:

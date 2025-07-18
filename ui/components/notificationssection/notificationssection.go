@@ -16,7 +16,7 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/utils"
 )
 
-const SectionName = "notifications"
+const SectionType = "notification"
 
 type Model struct {
 	section.BaseModel
@@ -32,10 +32,10 @@ func NewModel(id int, ctx *context.ProgramContext) Model {
 		section.NewSectionOptions{
 			Id:          id,
 			Config:      config.SectionConfig{Title: "Notifications", Filters: ""},
-			Type:        SectionName,
+			Type:        SectionType,
 			Columns:     GetSectionColumns(ctx),
-			Singular:    "notification",
-			Plural:      "notifications",
+			Singular:    "Notification",
+			Plural:      "Notifications",
 			LastUpdated: time.Now(),
 			CreatedAt:   time.Now(),
 		},
@@ -53,10 +53,10 @@ func NewModelWithConfig(id int, ctx *context.ProgramContext, cfg config.Notifica
 		section.NewSectionOptions{
 			Id:          id,
 			Config:      cfg.ToSectionConfig(),
-			Type:        SectionName,
+			Type:        SectionType,
 			Columns:     GetSectionColumns(ctx),
-			Singular:    "notification",
-			Plural:      "notifications",
+			Singular:    "Notification",
+			Plural:      "Notifications",
 			LastUpdated: lastUpdated,
 			CreatedAt:   createdAt,
 		},
@@ -65,6 +65,13 @@ func NewModelWithConfig(id int, ctx *context.ProgramContext, cfg config.Notifica
 	m.CurrentPage = 1
 	m.HasNextPage = true
 	return m
+}
+
+type UpdateNotificationMsg struct {
+	NotificationID string
+	IsRead         *bool
+	IsDone         *bool
+	IsSubscribed   *bool
 }
 
 func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
@@ -140,9 +147,39 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				}
 				m.Table.SetRows(rows)
 			}
+			// TODO: update this
 			// Determine if there are more pages (simple heuristic: if we got a full page, assume there's more)
 			m.HasNextPage = len(msg.Notifications) == 50
 			m.IsLoading = false
+		}
+
+	case UpdateNotificationMsg:
+		for i, curr := range m.Notifications {
+			if curr.ID == msg.NotificationID {
+				if msg.IsRead != nil {
+					if *msg.IsRead {
+						curr.Unread = false
+					}
+					m.Notifications[i] = curr
+				}
+				if msg.IsSubscribed != nil {
+					if *msg.IsSubscribed {
+						curr.Subscribed = true
+					} else {
+						curr.Unread = false
+					}
+					m.Notifications[i] = curr
+				}
+				if msg.IsDone != nil {
+					if *msg.IsDone {
+						// remove done notification from list
+						m.Notifications = append(m.Notifications[0:i], (m.Notifications[i+1 : len(m.Notifications)])...)
+					}
+				}
+				m.SetIsLoading(false)
+				m.Table.SetRows(m.BuildRows())
+				break
+			}
 		}
 	}
 
@@ -229,7 +266,7 @@ func GetSectionColumns(ctx *context.ProgramContext) []table.Column {
 
 // Implement section.Section interface methods
 func (m Model) GetId() int                  { return m.Id }
-func (m Model) GetType() string             { return SectionName }
+func (m Model) GetType() string             { return SectionType }
 func (m Model) GetItemSingularForm() string { return "notification" }
 func (m Model) GetItemPluralForm() string   { return "notifications" }
 

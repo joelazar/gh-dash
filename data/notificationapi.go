@@ -107,14 +107,15 @@ func MarkNotificationAsRead(threadID string) error {
 
 	// GitHub returns 205 Reset Content for successful mark-as-read, with no body
 	// The Patch method expects a response to unmarshal, but GitHub returns empty body
-	var response any
-	err = client.Patch(endpoint, nil, &response)
-	if err != nil {
+	err = client.Patch(endpoint, nil, nil)
+	// TODO: this one is not working, fix it or remove it
+	// if err != nil && !errors.Is(err, json.SyntaxError) {
+	if err != nil && err.Error() != "unexpected end of JSON input" {
 		log.Error("MarkNotificationAsRead: PATCH failed", "err", err)
 		return err
 	}
 
-	log.Debug("MarkNotificationAsRead: successfully marked as read", "response", response)
+	log.Debug("MarkNotificationAsRead: successfully marked as read")
 
 	return nil
 }

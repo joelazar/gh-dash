@@ -541,10 +541,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.notificationSidebar.ToggleSubscription()
 				cmds = append(cmds, cmd)
 
-			case key.Matches(msg, keys.NotificationKeys.OpenBrowser):
-				cmd = m.notificationSidebar.OpenInBrowser()
-				cmds = append(cmds, cmd)
-
 			case key.Matches(msg, keys.NotificationKeys.ViewSwitch):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
@@ -627,39 +623,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if msg.Id == m.currSectionId {
 			m.onViewedRowChanged()
-		}
-
-	case notificationsidebar.NotificationActionMsg:
-		if msg.Action == "open_browser" && msg.URL != "" {
-			openCmd := func() tea.Msg {
-				b := browser.New("", os.Stdout, os.Stdin)
-				err := b.Browse(msg.URL)
-				if err != nil {
-					return constants.ErrMsg{Err: err}
-				}
-				return nil
-			}
-			cmds = append(cmds, openCmd)
-		}
-		// Refresh the notifications section to reflect any changes
-		if currSection != nil && currSection.GetType() == notificationssection.SectionName {
-			cmds = append(cmds, currSection.FetchNextPageSectionRows()...)
-		}
-
-	case notificationssection.NotificationsFetchedMsg:
-		if m.ctx.View == config.NotificationsView {
-			// Ensure we have the notifications section initialized
-			if len(m.notifications) == 0 {
-				// Initialize notifications with search section
-				search := notificationssection.NewModel(0, m.ctx)
-				m.notifications = []section.Section{&search}
-			}
-			// Update the notifications section with the fetched data
-			if msg.SectionId < len(m.notifications) {
-				updatedSection, sectionCmd := m.notifications[msg.SectionId].Update(msg)
-				m.notifications[msg.SectionId] = updatedSection
-				cmds = append(cmds, sectionCmd)
-			}
 		}
 
 	case execProcessFinishedMsg, tea.FocusMsg:
@@ -842,7 +805,7 @@ func (m *Model) updateSection(id int, sType string, msg tea.Msg) (cmd tea.Cmd) {
 			updatedSection, cmd = m.issues[id].Update(msg)
 			m.issues[id] = updatedSection
 		}
-	case notificationssection.SectionName:
+	case notificationssection.SectionType:
 		if id >= 0 && id < len(m.notifications) {
 			updatedSection, cmd = m.notifications[id].Update(msg)
 			m.notifications[id] = updatedSection
@@ -897,6 +860,8 @@ func (m *Model) syncSidebar() tea.Cmd {
 		m.issueSidebar.SetWidth(width)
 		m.sidebar.SetContent(m.issueSidebar.View())
 	case *data.Notification:
+		m.notificationSidebar.SetSectionId(m.currSectionId)
+		// TODO: rename to setrow
 		m.notificationSidebar.SetNotification(row)
 		m.notificationSidebar.SetWidth(width)
 		m.sidebar.SetContent(m.notificationSidebar.View())
