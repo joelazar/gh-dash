@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/dlvhdr/gh-dash/v4/config"
 	"github.com/dlvhdr/gh-dash/v4/data"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/notification"
@@ -118,6 +119,42 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		case key.Matches(msg, keys.NotificationKeys.SortToggle):
 			m.ToggleSort()
 			return &m, nil
+		case key.Matches(msg, keys.NotificationKeys.FilterByRepo):
+			currRow := m.GetCurrRow()
+			if currRow != nil {
+				notification := currRow.(*data.Notification)
+				repoFilter := fmt.Sprintf("repo:%s", notification.Repository)
+				m.SearchValue = repoFilter
+				m.SearchBar.SetValue(repoFilter)
+				m.ResetRows()
+				m.SetIsLoading(true)
+
+				limit := 50
+				if m.Ctx != nil && m.Ctx.Config != nil {
+					limit = m.Ctx.Config.Defaults.NotificationsLimit
+				}
+				if m.Config.Limit != nil {
+					limit = *m.Config.Limit
+				}
+				return &m, tea.Batch(FetchNotificationsWithLimits(m.Ctx, m.Id, limit, m.GetFilters()))
+			}
+			return &m, nil
+		case key.Matches(msg, keys.NotificationKeys.ResetFilter):
+			// Reset to the default filter (config filter + current remote if applicable)
+			defaultFilter := m.getDefaultFilter()
+			m.SearchValue = defaultFilter
+			m.SearchBar.SetValue(defaultFilter)
+			m.ResetRows()
+			m.SetIsLoading(true)
+
+			limit := 50
+			if m.Ctx != nil && m.Ctx.Config != nil {
+				limit = m.Ctx.Config.Defaults.NotificationsLimit
+			}
+			if m.Config.Limit != nil {
+				limit = *m.Config.Limit
+			}
+			return &m, tea.Batch(FetchNotificationsWithLimits(m.Ctx, m.Id, limit, m.GetFilters()))
 		}
 
 	case NotificationsFetchedMsg:
@@ -419,4 +456,22 @@ func (m *Model) HasRepoNameInConfiguredFilter() bool {
 	}
 
 	return utils.HasExplicitRepoFilter(searchValue)
+}
+
+func (m *Model) getDefaultFilter() string {
+	// Recreate the default filter logic from NewModel
+	searchValue := m.Config.Filters
+	if m.Ctx != nil && m.Ctx.Config.SmartFilteringAtLaunch {
+		repo, err := repository.Current()
+		if err != nil {
+			return searchValue
+		}
+		for _, token := range strings.Fields(searchValue) {
+			if strings.HasPrefix(token, "repo:") {
+				return searchValue
+			}
+		}
+		return fmt.Sprintf("repo:%s/%s %s", repo.Owner, repo.Name, searchValue)
+	}
+	return searchValue
 }

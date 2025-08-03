@@ -10,10 +10,12 @@ import (
 )
 
 type NotificationKeyMap struct {
-	MarkDone   key.Binding
-	MarkRead   key.Binding
-	ViewSwitch key.Binding
-	SortToggle key.Binding
+	MarkDone     key.Binding
+	MarkRead     key.Binding
+	ViewSwitch   key.Binding
+	SortToggle   key.Binding
+	FilterByRepo key.Binding
+	ResetFilter  key.Binding
 }
 
 var NotificationKeys = NotificationKeyMap{
@@ -33,6 +35,14 @@ var NotificationKeys = NotificationKeyMap{
 		key.WithKeys("S"),
 		key.WithHelp("S", "toggle sort"),
 	),
+	FilterByRepo: key.NewBinding(
+		key.WithKeys("f"),
+		key.WithHelp("f", "filter by repo"),
+	),
+	ResetFilter: key.NewBinding(
+		key.WithKeys("F"),
+		key.WithHelp("F", "reset filter"),
+	),
 }
 
 func NotificationFullHelp() []key.Binding {
@@ -41,6 +51,8 @@ func NotificationFullHelp() []key.Binding {
 		NotificationKeys.MarkDone,
 		NotificationKeys.ViewSwitch,
 		NotificationKeys.SortToggle,
+		NotificationKeys.FilterByRepo,
+		NotificationKeys.ResetFilter,
 	}
 }
 
@@ -82,6 +94,10 @@ func rebindNotificationKeys(keys []config.Keybinding) error {
 			key = &NotificationKeys.ViewSwitch
 		case "sortToggle":
 			key = &NotificationKeys.SortToggle
+		case "filterByRepo":
+			key = &NotificationKeys.FilterByRepo
+		case "resetFilter":
+			key = &NotificationKeys.ResetFilter
 		default:
 			return fmt.Errorf("unknown built-in notification key: '%s'", notificationKey.Builtin)
 		}
