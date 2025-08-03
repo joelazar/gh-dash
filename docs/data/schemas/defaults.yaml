@@ -13,6 +13,8 @@ schematize:
 
       - Display the preview pane with a width of 50 columns for all work items.
       - Only fetch 20 PRs and issues at a time for each section.
+      - Fetch 50 notifications at a time with a maximum of 200 per request.
+      - Only fetch notifications up to 30 days old.
       - Display the PRs view when the dashboard loads.
       - Refetch PRs and issues for each section every 30 minutes.
       - Display dates using relative values.
@@ -31,6 +33,9 @@ default:
   prsLimit: 20
   prApproveComment: LGTM
   issuesLimit: 20
+  notificationsLimit: 50
+  notificationsMaxLimit: 200
+  notificationsMaxAgeDays: 30
   view: prs
   refetchIntervalMinutes: 30
 properties:
@@ -93,6 +98,51 @@ properties:
     type: integer
     minimum: 1
     default: 20
+  notificationsLimit:
+    title: Notification Fetch Limit
+    description: Global limit on the number of notifications fetched for the dashboard
+    schematize:
+      weight: 3.5
+      details: |
+        This setting defines how many notifications the dashboard should fetch for each section when:
+
+        - The dashboard first loads.
+        - The [sref:fetch interval] elapses.
+        - You navigate to the next notification in a table without another fetched notification to display.
+        - You use the [refresh current section] or [refresh all sections] commands.
+
+        [sref:fetch interval]:     defaults.fetchIntervalMinutes
+        [refresh current section]: /getting-started/keybindings/global/#refresh-current-section
+        [refresh all sections]:    /getting-started/keybindings/global/#refresh-all-sections
+    type: integer
+    minimum: 1
+    default: 50
+  notificationsMaxLimit:
+    title: Notification Maximum Fetch Limit
+    description: Maximum number of notifications that can be fetched in a single request
+    schematize:
+      weight: 3.6
+      details: |
+        This setting defines the upper limit on the number of notifications that can be fetched 
+        from GitHub API in a single request. This helps control API usage and performance.
+
+        By default, the maximum limit is 200 notifications per request.
+    type: integer
+    minimum: 1
+    default: 200
+  notificationsMaxAgeDays:
+    title: Notification Maximum Age in Days
+    description: Maximum age of notifications to fetch from GitHub
+    schematize:
+      weight: 3.7
+      details: |
+        This setting defines how far back in time the dashboard should look for notifications.
+        Notifications older than this number of days will not be fetched.
+
+        By default, notifications older than 30 days are not fetched.
+    type: integer
+    minimum: 1
+    default: 30
   preview:
     title: Preview Pane
     description: Defaults for the preview pane
