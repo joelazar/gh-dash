@@ -117,17 +117,17 @@ type LayoutConfig struct {
 }
 
 type Defaults struct {
-	Preview                PreviewConfig `yaml:"preview"`
-	PrsLimit               int           `yaml:"prsLimit"`
-	PrApproveComment       string        `yaml:"prApproveComment,omitempty"`
-	IssuesLimit            int           `yaml:"issuesLimit"`
-	NotificationsLimit     int           `yaml:"notificationsLimit"`
-	NotificationsMaxLimit  int           `yaml:"notificationsMaxLimit,omitempty"`
-	NotificationsMaxAgeDays int          `yaml:"notificationsMaxAgeDays,omitempty"`
-	View                   ViewType      `yaml:"view"`
-	Layout                 LayoutConfig  `yaml:"layout,omitempty"`
-	RefetchIntervalMinutes int           `yaml:"refetchIntervalMinutes,omitempty"`
-	DateFormat             string        `yaml:"dateFormat,omitempty"`
+	Preview                 PreviewConfig `yaml:"preview"`
+	PrsLimit                int           `yaml:"prsLimit"`
+	PrApproveComment        string        `yaml:"prApproveComment,omitempty"`
+	IssuesLimit             int           `yaml:"issuesLimit"`
+	NotificationsLimit      int           `yaml:"notificationsLimit"`
+	NotificationsMaxLimit   int           `yaml:"notificationsMaxLimit,omitempty"`
+	NotificationsMaxAgeDays int           `yaml:"notificationsMaxAgeDays,omitempty"`
+	View                    ViewType      `yaml:"view"`
+	Layout                  LayoutConfig  `yaml:"layout,omitempty"`
+	RefetchIntervalMinutes  int           `yaml:"refetchIntervalMinutes,omitempty"`
+	DateFormat              string        `yaml:"dateFormat,omitempty"`
 }
 
 type RepoConfig struct {
@@ -271,14 +271,14 @@ func (parser ConfigParser) getDefaultConfig() Config {
 				Open:  true,
 				Width: 50,
 			},
-			PrsLimit:               20,
-			PrApproveComment:       "LGTM",
-			IssuesLimit:            20,
-			NotificationsLimit:     50,
-			NotificationsMaxLimit:  200,
+			PrsLimit:                20,
+			PrApproveComment:        "LGTM",
+			IssuesLimit:             20,
+			NotificationsLimit:      50,
+			NotificationsMaxLimit:   200,
 			NotificationsMaxAgeDays: 30,
-			View:                   PRsView,
-			RefetchIntervalMinutes: 30,
+			View:                    PRsView,
+			RefetchIntervalMinutes:  30,
 			Layout: LayoutConfig{
 				Prs: PrsLayoutConfig{
 					UpdatedAt: ColumnConfig{

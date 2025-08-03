@@ -21,7 +21,6 @@ func GetNotificationsWithLimits(limit int, maxLimit int, maxAgeDays int, query .
 }
 
 func GetNotificationsPaginated(page, perPage int, query ...string) ([]Notification, error) {
-
 	// Parse query to determine API parameters and client-side filters
 	queryStr := ""
 	if len(query) > 0 {
@@ -47,13 +46,13 @@ func GetNotificationsPaginatedWithLimits(page, perPage int, maxLimit int, maxAge
 	// Apply max limit enforcement - ensure we never fetch more than maxLimit total
 	effectiveLimit := perPage
 	if maxLimit > 0 {
-		totalRequested := (page - 1) * perPage + perPage
+		totalRequested := (page-1)*perPage + perPage
 		log.Debug("PERF: Limit calculation - totalRequested: %d, maxLimit: %d", totalRequested, maxLimit)
 		if totalRequested > maxLimit {
 			remainingLimit := maxLimit - (page-1)*perPage
 			log.Debug("PERF: Remaining limit: %d", remainingLimit)
 			if remainingLimit <= 0 {
-				log.Debug("PERF: No remaining limit, returning empty") 
+				log.Debug("PERF: No remaining limit, returning empty")
 				return []Notification{}, nil
 			}
 			effectiveLimit = remainingLimit
@@ -100,7 +99,7 @@ func GetNotificationsPaginatedWithLimits(page, perPage int, maxLimit int, maxAge
 func getNotificationsSinglePage(page, perPage int, queryStr string) ([]Notification, error) {
 	log.Debug("PERF: getNotificationsSinglePage START - page: %d, perPage: %d, query: '%s'", page, perPage, queryStr)
 	start := time.Now()
-	
+
 	client, err := gh.DefaultRESTClient()
 	if err != nil {
 		log.Debug("PERF: getNotificationsSinglePage: failed to create client in %v - error: %v", time.Since(start), err)
@@ -125,14 +124,14 @@ func getNotificationsSinglePage(page, perPage int, queryStr string) ([]Notificat
 
 	// Build query parameters
 	params := url.Values{}
-	
+
 	// Handle is:unread filter by setting the 'all' parameter
 	if strings.Contains(queryStr, "is:unread") {
 		params.Add("all", "false")
 	} else {
 		params.Add("all", "true")
 	}
-	
+
 	params.Add("page", fmt.Sprintf("%d", page))
 	params.Add("per_page", fmt.Sprintf("%d", perPage))
 
@@ -198,7 +197,7 @@ func getNotificationsWithRepoFilter(requestedPage, perPage int, queryStr string)
 	log.Debug("PERF: getNotificationsWithRepoFilter START - requestedPage: %d, perPage: %d, query: '%s'", requestedPage, perPage, queryStr)
 	start := time.Now()
 	log.Debug("getNotificationsWithRepoFilter: starting multi-page fetch", "requestedPage", requestedPage, "perPage", perPage)
-	
+
 	client, err := gh.DefaultRESTClient()
 	if err != nil {
 		log.Debug("getNotificationsWithRepoFilter: failed to create client", "err", err)
@@ -211,7 +210,7 @@ func getNotificationsWithRepoFilter(requestedPage, perPage int, queryStr string)
 	currentPage := 1
 	maxPages := 10 // Safety limit to prevent infinite loops
 	log.Debug("PERF: getNotificationsWithRepoFilter: maxPages limit set to %d", maxPages)
-	
+
 	// For page 1, fetch until we have enough results or run out of pages
 	if requestedPage == 1 {
 		log.Debug("PERF: getNotificationsWithRepoFilter: handling page 1 - need %d filtered results", perPage)
@@ -231,12 +230,12 @@ func getNotificationsWithRepoFilter(requestedPage, perPage int, queryStr string)
 			filteredFromThisPage := filterNotificationsByRepo(notifications, queryStr)
 			log.Debug("PERF: getNotificationsWithRepoFilter: page %d filtering took %v - %d->%d notifications", currentPage, time.Since(filterStart), len(notifications), len(filteredFromThisPage))
 			filteredNotifications = append(filteredNotifications, filteredFromThisPage...)
-			
+
 			log.Debug("PERF: getNotificationsWithRepoFilter: page %d results - raw: %d, filtered: %d, total_filtered: %d, hasMore: %v", currentPage, len(notifications), len(filteredFromThisPage), len(filteredNotifications), hasMore)
-			log.Debug("getNotificationsWithRepoFilter: page results", 
-				"page", currentPage, 
-				"raw", len(notifications), 
-				"filtered", len(filteredFromThisPage), 
+			log.Debug("getNotificationsWithRepoFilter: page results",
+				"page", currentPage,
+				"raw", len(notifications),
+				"filtered", len(filteredFromThisPage),
 				"total_filtered", len(filteredNotifications))
 
 			// If this page didn't return a full set of results, we've reached the end
@@ -247,7 +246,7 @@ func getNotificationsWithRepoFilter(requestedPage, perPage int, queryStr string)
 
 			currentPage++
 		}
-		
+
 		log.Debug("PERF: getNotificationsWithRepoFilter: page 1 processing complete - got %d filtered notifications", len(filteredNotifications))
 		// Return up to perPage results
 		if len(filteredNotifications) > perPage {
@@ -269,7 +268,7 @@ func getNotificationsWithRepoFilter(requestedPage, perPage int, queryStr string)
 		return nil, err
 	}
 	log.Debug("PERF: getNotificationsWithRepoFilter: page %d fetch SUCCESS in %v - got %d raw notifications", requestedPage, time.Since(pageStart), len(notifications))
-	
+
 	filterStart := time.Now()
 	result := filterNotificationsByRepo(notifications, queryStr)
 	log.Debug("PERF: getNotificationsWithRepoFilter: page %d filtering took %v - %d->%d notifications", requestedPage, time.Since(filterStart), len(notifications), len(result))
@@ -298,14 +297,14 @@ func fetchSingleNotificationPage(client *gh.RESTClient, page, perPage int, query
 
 	// Build query parameters
 	params := url.Values{}
-	
+
 	// Handle is:unread filter by setting the 'all' parameter
 	if strings.Contains(queryStr, "is:unread") {
 		params.Add("all", "false")
 	} else {
 		params.Add("all", "true")
 	}
-	
+
 	params.Add("page", fmt.Sprintf("%d", page))
 	params.Add("per_page", fmt.Sprintf("%d", perPage))
 
@@ -367,7 +366,7 @@ func containsRepoFilter(query string) bool {
 func filterNotificationsByRepo(notifications []Notification, query string) []Notification {
 	log.Debug("PERF: filterNotificationsByRepo START - filtering %d notifications with query: '%s'", len(notifications), query)
 	start := time.Now()
-	
+
 	// Extract repo filter from query
 	repoFilter := ""
 	tokens := strings.Fields(query)
@@ -378,12 +377,12 @@ func filterNotificationsByRepo(notifications []Notification, query string) []Not
 		}
 	}
 	log.Debug("PERF: filterNotificationsByRepo: extracted repo filter: '%s'", repoFilter)
-	
+
 	if repoFilter == "" {
 		log.Debug("PERF: filterNotificationsByRepo: no repo filter, returning all %d notifications", len(notifications))
 		return notifications
 	}
-	
+
 	// Filter notifications by repository
 	filtered := make([]Notification, 0, len(notifications))
 	matchCount := 0
@@ -394,7 +393,7 @@ func filterNotificationsByRepo(notifications []Notification, query string) []Not
 		}
 	}
 	log.Debug("PERF: filterNotificationsByRepo: matched %d/%d notifications", matchCount, len(notifications))
-	
+
 	log.Debug("PERF: filterNotificationsByRepo COMPLETE in %v - filtered %d->%d notifications", time.Since(start), len(notifications), len(filtered))
 	return filtered
 }
@@ -523,13 +522,13 @@ func filterNotificationsByAge(notifications []Notification, maxAgeDays int) []No
 
 	cutoffTime := time.Now().AddDate(0, 0, -maxAgeDays)
 	filtered := make([]Notification, 0, len(notifications))
-	
+
 	for _, notification := range notifications {
 		if notification.UpdatedAt.After(cutoffTime) {
 			filtered = append(filtered, notification)
 		}
 	}
-	
+
 	log.Debug("filterNotificationsByAge", "original", len(notifications), "filtered", len(filtered), "maxAgeDays", maxAgeDays)
 	return filtered
 }

@@ -61,14 +61,14 @@ const (
 	// Notification icons
 	NotificationIcon    = "󰎚" // nf-md-bell
 	UnreadIcon          = "󰂚" // nf-fa-bell
-	ReadIcon            = ""   // nf-fa-check_circle
+	ReadIcon            = "" // nf-fa-check_circle
 	ReviewRequestedIcon = "󰯢" // review icon
 	MentionIcon         = "󰍡" // nf-md-at
 	AssignIcon          = "󱡢" // person plus
-	CommentNotifIcon    = ""  // oct-comment-discussion
+	CommentNotifIcon    = "" // oct-comment-discussion
 	UpdatedIcon         = "󱦻" // clock
 	CreatedIcon         = "󰃭" // calendar
-	RepoIcon            = ""  // oct-repo
+	RepoIcon            = "" // oct-repo
 	ReasonIcon          = "󰓽" // tag
 	TypeIcon            = "󰈔" // file
 	BookmarkIcon        = "󰃃" // bookmark

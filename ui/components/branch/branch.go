@@ -295,7 +295,6 @@ func (b *Branch) renderBranch(isSelected bool, width int) string {
 		name,
 		b.renderCommitsAheadBehind(isSelected),
 	))
-
 }
 
 func (b *Branch) getBaseStyle(isSelected bool) lipgloss.Style {

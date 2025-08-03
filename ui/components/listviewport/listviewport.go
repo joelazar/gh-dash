@@ -58,7 +58,7 @@ func (m *Model) SetNumItems(numItems int) {
 	oldNumItems := m.NumCurrentItems
 	m.NumCurrentItems = numItems
 	itemsPerPage := m.getNumPrsPerPage()
-	
+
 	// Only reset bounds if this is initial setup (no items before) or items decreased
 	if oldNumItems == 0 || numItems < oldNumItems {
 		// Reset bounds for initial setup or when items are removed
@@ -70,7 +70,6 @@ func (m *Model) SetNumItems(numItems int) {
 		maxVisibleBottom := m.topBoundId + itemsPerPage - 1
 		m.bottomBoundId = utils.Min(m.NumCurrentItems-1, maxVisibleBottom)
 	}
-	
 }
 
 func (m *Model) SetTotalItems(total int) {

@@ -59,7 +59,6 @@ func (n *Notification) renderUnreadIcon() string {
 	return iconStyle.Render("○")
 }
 
-
 func (n *Notification) renderUpdatedAt() string {
 	return n.getTextStyle().
 		Foreground(n.Ctx.Theme.FaintText).

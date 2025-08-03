@@ -535,7 +535,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.notificationSidebar.MarkAsDone()
 				cmds = append(cmds, cmd)
 
-
 			case key.Matches(msg, keys.NotificationKeys.ViewSwitch):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()

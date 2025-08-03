@@ -44,11 +44,11 @@ func FetchNotifications(sectionId int, limit int, searchQuery string) tea.Cmd {
 	return func() tea.Msg {
 		log.Debug("PERF: FetchNotifications CMD START - sectionId: %d, limit: %d, query: '%s'", sectionId, limit, searchQuery)
 		start := time.Now()
-		
+
 		// Normalize filters to support is:repo(<name>) syntax
 		normalizedQuery := utils.NormalizeFilters(searchQuery)
 		log.Debug("PERF: FetchNotifications: normalized query from '%s' to '%s'", searchQuery, normalizedQuery)
-		
+
 		notifications, err := data.GetNotificationsPaginated(1, limit, normalizedQuery)
 		if err != nil {
 			log.Debug("PERF: FetchNotifications CMD FAILED in %v - error: %v", time.Since(start), err)
@@ -68,16 +68,16 @@ func FetchNotificationsWithLimits(ctx *context.ProgramContext, sectionId int, li
 	return func() tea.Msg {
 		log.Debug("PERF: FetchNotificationsWithLimits CMD START - sectionId: %d, limit: %d, query: '%s'", sectionId, limit, searchQuery)
 		start := time.Now()
-		
+
 		// Get the max limits from config
 		maxLimit := ctx.Config.Defaults.NotificationsMaxLimit
 		maxAgeDays := ctx.Config.Defaults.NotificationsMaxAgeDays
 		log.Debug("PERF: FetchNotificationsWithLimits: config limits - maxLimit: %d, maxAgeDays: %d", maxLimit, maxAgeDays)
-		
+
 		// Normalize filters to support is:repo(<name>) syntax
 		normalizedQuery := utils.NormalizeFilters(searchQuery)
 		log.Debug("PERF: FetchNotificationsWithLimits: normalized query from '%s' to '%s'", searchQuery, normalizedQuery)
-		
+
 		notifications, err := data.GetNotificationsWithLimits(limit, maxLimit, maxAgeDays, normalizedQuery)
 		if err != nil {
 			log.Debug("PERF: FetchNotificationsWithLimits CMD FAILED in %v - error: %v", time.Since(start), err)
@@ -97,11 +97,11 @@ func FetchNotificationsPaginated(sectionId int, page int, limit int, searchQuery
 	return func() tea.Msg {
 		log.Debug("PERF: FetchNotificationsPaginated CMD START - sectionId: %d, page: %d, limit: %d, query: '%s'", sectionId, page, limit, searchQuery)
 		start := time.Now()
-		
+
 		// Normalize filters to support is:repo(<name>) syntax
 		normalizedQuery := utils.NormalizeFilters(searchQuery)
 		log.Debug("PERF: FetchNotificationsPaginated: normalized query from '%s' to '%s'", searchQuery, normalizedQuery)
-		
+
 		notifications, err := data.GetNotificationsPaginated(page, limit, normalizedQuery)
 		if err != nil {
 			log.Debug("PERF: FetchNotificationsPaginated CMD FAILED in %v - error: %v", time.Since(start), err)
@@ -122,16 +122,16 @@ func FetchNotificationsPaginatedWithLimits(ctx *context.ProgramContext, sectionI
 	return func() tea.Msg {
 		log.Debug("PERF: FetchNotificationsPaginatedWithLimits CMD START - sectionId: %d, page: %d, limit: %d, query: '%s'", sectionId, page, limit, searchQuery)
 		start := time.Now()
-		
+
 		// Get the max limits from config
 		maxLimit := ctx.Config.Defaults.NotificationsMaxLimit
 		maxAgeDays := ctx.Config.Defaults.NotificationsMaxAgeDays
 		log.Debug("PERF: FetchNotificationsPaginatedWithLimits: config limits - maxLimit: %d, maxAgeDays: %d", maxLimit, maxAgeDays)
-		
+
 		// Normalize filters to support is:repo(<name>) syntax
 		normalizedQuery := utils.NormalizeFilters(searchQuery)
 		log.Debug("PERF: FetchNotificationsPaginatedWithLimits: normalized query from '%s' to '%s'", searchQuery, normalizedQuery)
-		
+
 		notifications, err := data.GetNotificationsPaginatedWithLimits(page, limit, maxLimit, maxAgeDays, normalizedQuery)
 		if err != nil {
 			log.Debug("PERF: FetchNotificationsPaginatedWithLimits CMD FAILED in %v - error: %v", time.Since(start), err)

@@ -169,7 +169,7 @@ func (m *Model) createEmptyRow() string {
 	// Create an empty row with the same width as regular rows but minimal content
 	// This acts as a placeholder for virtual scrolling
 	var rowParts []string
-	
+
 	for _, col := range m.getShownColumns() {
 		width := col.ComputedWidth
 		if width == 0 {
@@ -179,7 +179,7 @@ func (m *Model) createEmptyRow() string {
 		emptyContent := strings.Repeat(" ", width)
 		rowParts = append(rowParts, emptyContent)
 	}
-	
+
 	return lipgloss.JoinHorizontal(lipgloss.Left, rowParts...)
 }
 
@@ -190,17 +190,17 @@ func (m *Model) SyncViewPortContent() {
 		m.cachedContentValid = false
 		return
 	}
-	
+
 	currentSelectedRow := m.rowsViewport.GetCurrItem()
-	
+
 	// Check if we can use cached content (no data changes, only selection changed)
 	if m.cachedContentValid && currentSelectedRow != m.lastSelectedRow && totalRows > 100 {
-		
+
 		// For large lists, try to avoid full re-render when only selection changes
 		// Re-render just the affected rows: old selection and new selection
 		headerColumns := m.renderHeaderColumns()
 		m.cacheColumnWidths()
-		
+
 		// Split cached content into lines and update only the changed rows
 		lines := strings.Split(m.cachedContent, "\n")
 		if m.lastSelectedRow < len(lines) && currentSelectedRow < len(lines) {
@@ -212,7 +212,7 @@ func (m *Model) SyncViewPortContent() {
 			if currentSelectedRow >= 0 && currentSelectedRow < totalRows {
 				lines[currentSelectedRow] = m.renderRow(currentSelectedRow, headerColumns)
 			}
-			
+
 			updatedContent := strings.Join(lines, "\n")
 			m.rowsViewport.SyncViewPort(updatedContent)
 			m.cachedContent = updatedContent
@@ -220,15 +220,15 @@ func (m *Model) SyncViewPortContent() {
 			return
 		}
 	}
-	
+
 	// Full re-render needed (data changed or cache invalid)
 	if totalRows > 100 {
 		// reserved for future metrics
 	}
-	
+
 	headerColumns := m.renderHeaderColumns()
 	m.cacheColumnWidths()
-	
+
 	renderedRows := make([]string, 0, totalRows)
 	for i := range m.Rows {
 		renderedRows = append(renderedRows, m.renderRow(i, headerColumns))

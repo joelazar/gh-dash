@@ -112,11 +112,11 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 	case NotificationsFetchedMsg:
 		if msg.SectionId == m.Id {
 			if msg.IsFirstPage {
-					// Replace all notifications for first page
+				// Replace all notifications for first page
 				m.SetRows(msg.Notifications)
 				m.CurrentPage = 1
 			} else {
-					// Append notifications for subsequent pages
+				// Append notifications for subsequent pages
 				m.Notifications = append(m.Notifications, msg.Notifications...)
 				m.CurrentPage = msg.Page
 				// Update table rows using the new component
@@ -139,10 +139,10 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				maxLimit = m.Ctx.Config.Defaults.NotificationsMaxLimit
 			}
 			totalNotifications := len(m.Notifications)
-			
+
 			gotFullPage := len(msg.Notifications) == limit
 			underMaxLimit := maxLimit <= 0 || totalNotifications < maxLimit
-			
+
 			m.HasNextPage = gotFullPage && underMaxLimit
 			m.SetIsLoading(false)
 		}
@@ -179,12 +179,12 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 func (m *Model) SetRows(notifications []data.Notification) {
 	log.Debug("PERF: SetRows called - setting %d notifications (replacing %d existing)", len(notifications), len(m.Notifications))
 	start := time.Now()
-	
+
 	m.Notifications = notifications
 	rowStart := time.Now()
 	m.Table.SetRows(m.BuildRows())
 	log.Debug("PERF: SetRows: BuildRows took %v", time.Since(rowStart))
-	
+
 	log.Debug("PERF: SetRows COMPLETE in %v - set %d notifications", time.Since(start), len(notifications))
 }
 
@@ -252,7 +252,7 @@ func (m Model) GetCurrRow() data.RowData {
 func (m Model) FetchNextPageSectionRows() []tea.Cmd {
 	log.Debug("PERF: FetchNextPageSectionRows called - currentPage: %d, hasNextPage: %v, totalNotifications: %d", m.CurrentPage, m.HasNextPage, len(m.Notifications))
 	start := time.Now()
-	
+
 	// Calculate the limit to use - section-specific limit or default
 	limit := 50 // fallback default
 	if m.Ctx != nil && m.Ctx.Config != nil {
@@ -316,7 +316,7 @@ func (m Model) FetchNextPageSectionRows() []tea.Cmd {
 func (m Model) BuildRows() []table.Row {
 	log.Debug("PERF: BuildRows START - building %d notification rows", len(m.Notifications))
 	start := time.Now()
-	
+
 	rows := make([]table.Row, len(m.Notifications))
 	for i, n := range m.Notifications {
 		notificationModel := notification.Notification{

@@ -10,10 +10,10 @@ import (
 func NormalizeFilters(filters string) string {
 	// Regular expression to match is:repo(<name>) pattern
 	isRepoPattern := regexp.MustCompile(`is:repo\(([^)]+)\)`)
-	
+
 	// Replace is:repo(<name>) with repo:<name>
 	normalized := isRepoPattern.ReplaceAllString(filters, "repo:$1")
-	
+
 	return normalized
 }
 
@@ -26,7 +26,7 @@ func HasExplicitRepoFilter(filters string) bool {
 			return true
 		}
 	}
-	
+
 	// Check for is:repo(<name>) pattern
 	isRepoPattern := regexp.MustCompile(`is:repo\([^)]+\)`)
 	return isRepoPattern.MatchString(filters)

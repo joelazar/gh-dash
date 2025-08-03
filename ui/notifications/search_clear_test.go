@@ -51,7 +51,7 @@ func TestSearchClearBehavior(t *testing.T) {
 			model.Ctx = ctx
 			model.Config = config.SectionConfig{}
 			model.SearchValue = tc.initialSearchValue
-			model.CurrentPage = 2 // Simulate being on page 2
+			model.CurrentPage = 2     // Simulate being on page 2
 			model.HasNextPage = false // Simulate no next page
 
 			// Test the behavior based on the new search value
@@ -83,7 +83,7 @@ func TestSearchClearResetsRowsAndPagination(t *testing.T) {
 	model := notificationssection.Model{}
 	model.Id = 1
 	model.SearchValue = "existing query"
-	model.CurrentPage = 3 // Simulate being on page 3
+	model.CurrentPage = 3     // Simulate being on page 3
 	model.HasNextPage = false // Simulate no more pages
 
 	// Set up context for limit configuration
@@ -101,7 +101,7 @@ func TestSearchClearResetsRowsAndPagination(t *testing.T) {
 	newSearchValue := ""
 	model.SearchValue = newSearchValue
 	model.ResetRows()
-	
+
 	// When search is cleared, pagination should be reset
 	if newSearchValue == "" {
 		model.CurrentPage = 1
