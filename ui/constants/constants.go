@@ -59,18 +59,17 @@ const (
 	UnknownRoleIcon = "󱐡" // \udb85\udc21 nf-md-incognito_circle
 
 	// Notification icons
-	// TODO: finish this
-	NotificationIcon    = ""  // Bell icon for notifications
-	UnreadIcon          = ""  // Bell icon for unread notifications
-	ReadIcon            = ""  // Check icon for read notifications
-	ReviewRequestedIcon = "󰯢" // Review icon
-	MentionIcon         = ""  // At symbol for mentions
-	AssignIcon          = "󱡢" // Person plus for assignments
-	CommentNotifIcon    = ""  // Comment icon for comments
-	UpdatedIcon         = "󱦻" // Clock icon for updates
-	CreatedIcon         = "󱡢" // Calendar icon for creation
-	RepoIcon            = ""  // Repository icon
-	ReasonIcon          = ""  // Tag icon for reasons
-	TypeIcon            = ""  // File icon for types
-	BookmarkIcon        = "󰃃" // Bookmark icon
+	NotificationIcon    = "󰎚" // nf-md-bell
+	UnreadIcon          = "󰂚" // nf-fa-bell
+	ReadIcon            = ""   // nf-fa-check_circle
+	ReviewRequestedIcon = "󰯢" // review icon
+	MentionIcon         = "󰍡" // nf-md-at
+	AssignIcon          = "󱡢" // person plus
+	CommentNotifIcon    = ""  // oct-comment-discussion
+	UpdatedIcon         = "󱦻" // clock
+	CreatedIcon         = "󰃭" // calendar
+	RepoIcon            = ""  // oct-repo
+	ReasonIcon          = "󰓽" // tag
+	TypeIcon            = "󰈔" // file
+	BookmarkIcon        = "󰃃" // bookmark
 )
