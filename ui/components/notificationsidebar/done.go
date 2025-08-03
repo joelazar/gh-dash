@@ -41,7 +41,6 @@ func (m *Model) MarkAsDone() tea.Cmd {
 		}
 		log.Debug("MarkAsDone: successfully marked as done, returning action message")
 
-		// TODO: better pattern?
 		trueBool := true
 
 		return constants.TaskFinishedMsg{

@@ -41,7 +41,6 @@ func (m *Model) MarkAsRead() tea.Cmd {
 		}
 		log.Debug("MarkAsRead: successfully marked as read, returning action message")
 
-		// TODO: better pattern?
 		trueBool := true
 
 		return constants.TaskFinishedMsg{
