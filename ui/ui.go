@@ -945,7 +945,7 @@ func (m *Model) getCurrentViewDefaultSection() int {
 	} else if m.ctx.View == config.IssuesView {
 		return 1
 	} else if m.ctx.View == config.NotificationsView {
-		return 0
+		return 1
 	} else {
 		return 1
 	}
