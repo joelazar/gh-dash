@@ -11,23 +11,18 @@ import (
 )
 
 func GetNotifications(limit int, query ...string) ([]Notification, error) {
-	log.Debug("GetNotifications called", "limit", limit, "query", query)
 	start := time.Now()
 	result, err := GetNotificationsPaginated(1, limit, query...)
-	log.Debug("GetNotifications completed", "duration", time.Since(start), "count", len(result))
 	return result, err
 }
 
 func GetNotificationsWithLimits(limit int, maxLimit int, maxAgeDays int, query ...string) ([]Notification, error) {
-	log.Debug("GetNotificationsWithLimits called", "limit", limit, "maxLimit", maxLimit, "maxAgeDays", maxAgeDays, "query", query)
 	start := time.Now()
 	result, err := GetNotificationsPaginatedWithLimits(1, limit, maxLimit, maxAgeDays, query...)
-	log.Debug("GetNotificationsWithLimits completed", "duration", time.Since(start), "count", len(result))
 	return result, err
 }
 
 func GetNotificationsPaginated(page, perPage int, query ...string) ([]Notification, error) {
-	log.Debug("GetNotificationsPaginated start", "page", page, "perPage", perPage, "query", query)
 	start := time.Now()
 
 	// Parse query to determine API parameters and client-side filters
@@ -39,16 +34,12 @@ func GetNotificationsPaginated(page, perPage int, query ...string) ([]Notificati
 	// If there's a repo filter, we need to potentially fetch multiple pages
 	// to get enough matching results
 	if queryStr != "" && containsRepoFilter(queryStr) {
-		log.Debug("Using repo filter path", "query", queryStr)
 		result, err := getNotificationsWithRepoFilter(page, perPage, queryStr)
-		log.Debug("GetNotificationsPaginated complete (repo filter)", "duration", time.Since(start), "count", len(result))
 		return result, err
 	}
 
 	// For queries without repo filters, use the simpler single-page approach
-	log.Debug("Using single page path", "query", queryStr)
 	result, err := getNotificationsSinglePage(page, perPage, queryStr)
-	log.Debug("GetNotificationsPaginated complete (single page)", "duration", time.Since(start), "count", len(result))
 	return result, err
 }
 

@@ -115,19 +115,16 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 			processStart := time.Now()
 			
 			if msg.IsFirstPage {
-				log.Debug("PERF: Processing first page - replacing %d notifications with %d new ones", len(m.Notifications), len(msg.Notifications))
-				// Replace all notifications for first page
+					// Replace all notifications for first page
 				m.SetRows(msg.Notifications)
 				m.CurrentPage = 1
 			} else {
-				log.Debug("PERF: Processing page %d - appending %d notifications to existing %d", msg.Page, len(msg.Notifications), len(m.Notifications))
-				// Append notifications for subsequent pages
+					// Append notifications for subsequent pages
 				m.Notifications = append(m.Notifications, msg.Notifications...)
 				m.CurrentPage = msg.Page
 				// Update table rows using the new component
 				rowStart := time.Now()
 				m.Table.SetRows(m.BuildRows())
-				log.Debug("PERF: Building table rows took %v", time.Since(rowStart))
 			}
 			// Calculate the limit used for this fetch to determine if there are more pages
 			limit := 50 // fallback default
@@ -137,7 +134,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 			if m.Config.Limit != nil {
 				limit = *m.Config.Limit
 			}
-			log.Debug("PERF: Calculated limit: %d", limit)
 
 			// Check if we can fetch more pages based on:
 			// 1. Whether we got a full page of results
@@ -150,12 +146,9 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 			
 			gotFullPage := len(msg.Notifications) == limit
 			underMaxLimit := maxLimit <= 0 || totalNotifications < maxLimit
-			log.Debug("PERF: Pagination check - gotFullPage: %v (%d==%d), underMaxLimit: %v (total: %d, max: %d)", gotFullPage, len(msg.Notifications), limit, underMaxLimit, totalNotifications, maxLimit)
 			
 			m.HasNextPage = gotFullPage && underMaxLimit
-			log.Debug("PERF: HasNextPage set to: %v", m.HasNextPage)
 			m.SetIsLoading(false)
-			log.Debug("PERF: NotificationsFetchedMsg processing complete in %v - total notifications: %d", time.Since(processStart), len(m.Notifications))
 		}
 
 	case UpdateNotificationMsg:

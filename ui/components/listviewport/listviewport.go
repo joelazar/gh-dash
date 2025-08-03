@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 
 	"github.com/dlvhdr/gh-dash/v4/ui/constants"
 	"github.com/dlvhdr/gh-dash/v4/ui/context"
@@ -72,10 +71,6 @@ func (m *Model) SetNumItems(numItems int) {
 		m.bottomBoundId = utils.Min(m.NumCurrentItems-1, maxVisibleBottom)
 	}
 	
-	// Debug: check if bounds are reasonable
-	if numItems > 50 {
-		log.Debug("SetNumItems", "oldItems", oldNumItems, "newItems", numItems, "itemsPerPage", itemsPerPage, "topBound", m.topBoundId, "bottomBound", m.bottomBoundId, "currId", m.currId)
-	}
 }
 
 func (m *Model) SetTotalItems(total int) {

@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
 
 	"github.com/dlvhdr/gh-dash/v4/ui/common"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/listviewport"
@@ -195,8 +194,7 @@ func (m *Model) SyncViewPortContent() {
 	currentSelectedRow := m.rowsViewport.GetCurrItem()
 	
 	// Check if we can use cached content (no data changes, only selection changed)
-	if m.cachedContentValid && currentSelectedRow != m.lastSelectedRow && totalRows > 50 {
-		log.Debug("PERF: SyncViewPortContent using selection-only update", "totalRows", totalRows, "oldSelection", m.lastSelectedRow, "newSelection", currentSelectedRow)
+	if m.cachedContentValid && currentSelectedRow != m.lastSelectedRow && totalRows > 100 {
 		
 		// For large lists, try to avoid full re-render when only selection changes
 		// Re-render just the affected rows: old selection and new selection
@@ -221,15 +219,13 @@ func (m *Model) SyncViewPortContent() {
 			m.rowsViewport.SyncViewPort(updatedContent)
 			m.cachedContent = updatedContent
 			m.lastSelectedRow = currentSelectedRow
-			
-			log.Debug("PERF: SyncViewPortContent selection update complete", "totalRows", totalRows, "updateTime", time.Since(start))
 			return
 		}
 	}
 	
 	// Full re-render needed (data changed or cache invalid)
 	if totalRows > 100 {
-		log.Debug("PERF: SyncViewPortContent full render", "totalRows", totalRows, "reason", "data_changed_or_cache_invalid")
+		// reserved for future metrics
 	}
 	
 	headerColumns := m.renderHeaderColumns()
@@ -254,7 +250,8 @@ func (m *Model) SyncViewPortContent() {
 	m.lastSelectedRow = currentSelectedRow
 	
 	if totalRows > 100 {
-		log.Debug("PERF: SyncViewPortContent full render complete", "totalRows", totalRows, "renderTime", renderTime, "syncTime", syncTime, "totalTime", time.Since(start))
+		_ = renderTime
+		_ = syncTime
 	}
 }
 
