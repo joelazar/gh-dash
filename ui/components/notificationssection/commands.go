@@ -92,7 +92,7 @@ func FetchNotificationsPaginated(sectionId int, page int, limit int, searchQuery
 	}
 }
 
-func FetchNotificationsPaginatedWithLimits(ctx *context.ProgramContext, sectionId int, page int, limit int, searchQuery string) tea.Cmd {
+func FetchNotificationsPaginatedWithLimits(ctx *context.ProgramContext, sectionId int, page int, limit int, currentCount int, searchQuery string) tea.Cmd {
 	return func() tea.Msg {
 		// Get the max limits from config
 		maxLimit := ctx.Config.Defaults.NotificationsMaxLimit
@@ -101,7 +101,7 @@ func FetchNotificationsPaginatedWithLimits(ctx *context.ProgramContext, sectionI
 		// Normalize filters to support is:repo(<name>) syntax
 		normalizedQuery := utils.NormalizeFilters(searchQuery)
 
-		notifications, err := data.GetNotificationsPaginatedWithLimits(page, limit, maxLimit, maxAgeDays, normalizedQuery)
+		notifications, err := data.GetNotificationsPaginatedWithCurrentCount(page, limit, maxLimit, maxAgeDays, currentCount, normalizedQuery)
 		if err != nil {
 			return constants.ErrMsg{Err: err}
 		}

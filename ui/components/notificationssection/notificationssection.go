@@ -126,7 +126,9 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				m.SetRows(msg.Notifications)
 				m.CurrentPage = 1
 			} else {
-				m.Notifications = append(m.Notifications, msg.Notifications...)
+				// Append new notifications and apply deduplication to the entire set
+				allNotifications := append(m.Notifications, msg.Notifications...)
+				m.Notifications = data.DeduplicateNotifications(allNotifications)
 				m.CurrentPage = msg.Page
 				m.Table.SetRows(m.BuildRows())
 			}
@@ -144,10 +146,20 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 			}
 			totalNotifications := len(m.Notifications)
 
+			// Check if we got a full page of raw data (before deduplication)
 			gotFullPage := len(msg.Notifications) == limit
+			
+			// Check if we're under the max limit (after deduplication)
 			underMaxLimit := maxLimit <= 0 || totalNotifications < maxLimit
-
-			m.HasNextPage = gotFullPage && underMaxLimit
+			
+			// Be more aggressive about fetching when under maxLimit
+			// Keep fetching if:
+			// 1. We got a full page of raw data, OR
+			// 2. We're significantly under maxLimit (by more than one page size)
+			//    even if the last fetch wasn't full (could be due to deduplication)
+			significantlyUnderLimit := maxLimit > 0 && totalNotifications < (maxLimit - limit)
+			
+			m.HasNextPage = (gotFullPage || significantlyUnderLimit) && underMaxLimit
 			m.SetIsLoading(false)
 		}
 
@@ -180,7 +192,9 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 }
 
 func (m *Model) SetRows(notifications []data.Notification) {
-	m.Notifications = notifications
+	// Apply deduplication to keep only the latest notification for each combination
+	// of reason, type, repository, and title
+	m.Notifications = data.DeduplicateNotifications(notifications)
 	m.SortNotifications()
 	m.Table.SetRows(m.BuildRows())
 }
@@ -284,7 +298,8 @@ func (m Model) FetchNextPageSectionRows() []tea.Cmd {
 
 	if m.Ctx != nil {
 		filters := m.GetFilters()
-		cmd := FetchNotificationsPaginatedWithLimits(m.Ctx, m.Id, nextPage, limit, filters)
+		currentCount := len(m.Notifications) // Pass the current deduplicated count
+		cmd := FetchNotificationsPaginatedWithLimits(m.Ctx, m.Id, nextPage, limit, currentCount, filters)
 		return []tea.Cmd{cmd}
 	} else {
 		// Fallback for tests

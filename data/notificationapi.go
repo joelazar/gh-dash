@@ -39,6 +39,51 @@ func GetNotificationsPaginated(page, perPage int, query ...string) ([]Notificati
 	return result, err
 }
 
+func GetNotificationsPaginatedWithCurrentCount(page, perPage int, maxLimit int, maxAgeDays int, currentCount int, query ...string) ([]Notification, error) {
+	log.Debug("GetNotificationsPaginatedWithCurrentCount start", "page", page, "perPage", perPage, "maxLimit", maxLimit, "maxAgeDays", maxAgeDays, "currentCount", currentCount, "query", query)
+
+	// Apply max limit enforcement based on actual current count (after deduplication)
+	effectiveLimit := perPage
+	if maxLimit > 0 {
+		remainingLimit := maxLimit - currentCount
+		if remainingLimit <= 0 {
+			return []Notification{}, nil
+		}
+		if remainingLimit < perPage {
+			effectiveLimit = remainingLimit
+		}
+	}
+
+	// Parse query to determine API parameters and client-side filters
+	queryStr := ""
+	if len(query) > 0 {
+		queryStr = query[0]
+	}
+
+	var notifications []Notification
+	var err error
+
+	// If there's a repo filter, we need to potentially fetch multiple pages
+	// to get enough matching results
+	if queryStr != "" && containsRepoFilter(queryStr) {
+		notifications, err = getNotificationsWithRepoFilter(page, effectiveLimit, queryStr)
+	} else {
+		// For queries without repo filters, use the simpler single-page approach
+		notifications, err = getNotificationsSinglePage(page, effectiveLimit, queryStr)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply age filtering if specified
+	if maxAgeDays > 0 {
+		notifications = filterNotificationsByAge(notifications, maxAgeDays)
+	}
+
+	return notifications, nil
+}
+
 func GetNotificationsPaginatedWithLimits(page, perPage int, maxLimit int, maxAgeDays int, query ...string) ([]Notification, error) {
 	log.Debug("GetNotificationsPaginatedWithLimits start", "page", page, "perPage", perPage, "maxLimit", maxLimit, "maxAgeDays", maxAgeDays, "query", query)
 
@@ -396,6 +441,7 @@ func filterNotificationsByAge(notifications []Notification, maxAgeDays int) []No
 	log.Debug("filterNotificationsByAge", "original", len(notifications), "filtered", len(filtered), "maxAgeDays", maxAgeDays)
 	return filtered
 }
+
 
 func convertURL(apiURL string) string {
 	if apiURL == "" {
