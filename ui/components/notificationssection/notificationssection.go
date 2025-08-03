@@ -2,6 +2,8 @@ package notificationssection
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -19,11 +21,19 @@ import (
 
 const SectionType = "notification"
 
+type SortBy int
+
+const (
+	SortByUpdated SortBy = iota
+	SortByRepo
+)
+
 type Model struct {
 	section.BaseModel
 	Notifications []data.Notification
 	CurrentPage   int
 	HasNextPage   bool
+	SortBy        SortBy
 }
 
 func NewModel(id int, ctx *context.ProgramContext, cfg config.NotificationsSectionConfig, lastUpdated time.Time, createdAt time.Time) Model {
@@ -44,6 +54,7 @@ func NewModel(id int, ctx *context.ProgramContext, cfg config.NotificationsSecti
 	m.Notifications = []data.Notification{}
 	m.CurrentPage = 1
 	m.HasNextPage = true
+	m.SortBy = SortByUpdated
 	m.SetIsLoading(true)
 	return m
 }
@@ -103,6 +114,9 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Keys.Search):
 			m.SetIsSearching(true)
+			return &m, nil
+		case key.Matches(msg, keys.NotificationKeys.SortToggle):
+			m.ToggleSort()
 			return &m, nil
 		}
 
@@ -167,6 +181,7 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 
 func (m *Model) SetRows(notifications []data.Notification) {
 	m.Notifications = notifications
+	m.SortNotifications()
 	m.Table.SetRows(m.BuildRows())
 }
 
@@ -277,6 +292,35 @@ func (m Model) FetchNextPageSectionRows() []tea.Cmd {
 	}
 }
 
+func (m *Model) ToggleSort() {
+	if m.SortBy == SortByUpdated {
+		m.SortBy = SortByRepo
+	} else {
+		m.SortBy = SortByUpdated
+	}
+	m.SortNotifications()
+	m.Table.SetRows(m.BuildRows())
+}
+
+func (m *Model) SortNotifications() {
+	switch m.SortBy {
+	case SortByRepo:
+		// Sort by repository first, then by updated time (newest first)
+		slices.SortFunc(m.Notifications, func(a, b data.Notification) int {
+			if a.Repository != b.Repository {
+				return strings.Compare(a.Repository, b.Repository)
+			}
+			// If repositories are equal, sort by updated time (newest first)
+			return b.UpdatedAt.Compare(a.UpdatedAt)
+		})
+	case SortByUpdated:
+		// Sort by updated time only (newest first)
+		slices.SortFunc(m.Notifications, func(a, b data.Notification) int {
+			return b.UpdatedAt.Compare(a.UpdatedAt)
+		})
+	}
+}
+
 func (m Model) BuildRows() []table.Row {
 	rows := make([]table.Row, len(m.Notifications))
 	for i, n := range m.Notifications {
@@ -298,14 +342,19 @@ func (m Model) GetPagerContent() string {
 		timeElapsed = fmt.Sprintf("~%v ago", timeElapsed)
 	}
 	if m.TotalCount > 0 {
+		sortMode := "Updated"
+		if m.SortBy == SortByRepo {
+			sortMode = "Repo"
+		}
 		pagerContent = fmt.Sprintf(
-			"%v Updated %v • %v %v/%v (fetched %v)",
+			"%v Updated %v • %v %v/%v (fetched %v) • Sort: %v (S)",
 			constants.WaitingIcon,
 			timeElapsed,
 			m.SingularForm,
 			m.Table.GetCurrItem()+1,
 			m.TotalCount,
 			len(m.Table.Rows),
+			sortMode,
 		)
 	}
 	pager := m.Ctx.Styles.ListViewPort.PagerStyle.Render(pagerContent)

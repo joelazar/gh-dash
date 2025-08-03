@@ -13,6 +13,7 @@ type NotificationKeyMap struct {
 	MarkDone   key.Binding
 	MarkRead   key.Binding
 	ViewSwitch key.Binding
+	SortToggle key.Binding
 }
 
 var NotificationKeys = NotificationKeyMap{
@@ -28,6 +29,10 @@ var NotificationKeys = NotificationKeyMap{
 		key.WithKeys("s"),
 		key.WithHelp("s", "switch view"),
 	),
+	SortToggle: key.NewBinding(
+		key.WithKeys("S"),
+		key.WithHelp("S", "toggle sort"),
+	),
 }
 
 func NotificationFullHelp() []key.Binding {
@@ -35,6 +40,7 @@ func NotificationFullHelp() []key.Binding {
 		NotificationKeys.MarkRead,
 		NotificationKeys.MarkDone,
 		NotificationKeys.ViewSwitch,
+		NotificationKeys.SortToggle,
 	}
 }
 
@@ -74,6 +80,8 @@ func rebindNotificationKeys(keys []config.Keybinding) error {
 			key = &NotificationKeys.MarkDone
 		case "viewSwitch":
 			key = &NotificationKeys.ViewSwitch
+		case "sortToggle":
+			key = &NotificationKeys.SortToggle
 		default:
 			return fmt.Errorf("unknown built-in notification key: '%s'", notificationKey.Builtin)
 		}
