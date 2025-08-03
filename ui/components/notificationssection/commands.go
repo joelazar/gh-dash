@@ -25,15 +25,9 @@ func FetchAllSections(ctx *context.ProgramContext) ([]section.Section, tea.Cmd) 
 			time.Now(),
 		)
 
-		// Calculate the limit to use for API calls
-		limit := ctx.Config.Defaults.NotificationsLimit
-		if sectionConfig.Limit != nil {
-			limit = *sectionConfig.Limit
-		}
-
 		sections = append(sections, &sectionModel)
-		// Use the new limits-aware fetching function
-		fetchNotificationsCmds = append(fetchNotificationsCmds, FetchNotificationsWithLimits(ctx, i+1, limit, sectionConfig.Filters))
+		// Use FetchNextPageSectionRows to apply smart filtering like PR and Issues sections
+		fetchNotificationsCmds = append(fetchNotificationsCmds, sectionModel.FetchNextPageSectionRows()...)
 	}
 
 	return sections, tea.Batch(fetchNotificationsCmds...)
