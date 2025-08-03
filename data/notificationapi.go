@@ -352,69 +352,8 @@ func MarkNotificationAsRead(threadID string) error {
 	return nil
 }
 
-/* func SubscribeForNotification(threadID string) error {
-	log.Debug("SubscribeForNotification", "threadID", threadID)
+// Removed unused, commented-out functions for subscribe/unsubscribe
 
-	client, err := gh.DefaultRESTClient()
-	if err != nil {
-		log.Debug("SubscribeForNotification: failed to create client", "err", err)
-		return err
-	}
-
-	endpoint := fmt.Sprintf("notifications/threads/%s/subscription", threadID)
-	log.Debug("SubscribeForNotification: calling PUT", "endpoint", endpoint)
-
-	var response struct {
-		Subscribed bool      `json:"subscribed"`
-		Ignored    bool      `json:"ignored"`
-		Reason     string    `json:"reason"`
-		CreatedAt  time.Time `json:"created_at"`
-		URL        string    `json:"url"`
-		ThreadURL  string    `json:"thread_url"`
-	}
-
-	// GitHub returns 200 OK with a response body for successful subscribe.
-	body := strings.NewReader("{\"ignored\": false}")
-	err = client.Put(endpoint, body, &response)
-	if err != nil {
-		log.Error("SubscribeForNotification: PUT failed", "err", err)
-		return err
-	}
-
-	if !response.Subscribed {
-		log.Error("SubscribeForNotification: failed to subscribe", "response", response)
-		return fmt.Errorf("failed to subscribe to notification thread")
-	}
-
-	log.Debug("SubscribeForNotification: successfully subscribed", "response", response)
-
-	return nil
-} */
-
-/* func UnsubscribeFromNotification(threadID string) error {
-	log.Debug("UnsubscribeFromNotification", "threadID", threadID)
-
-	client, err := gh.DefaultRESTClient()
-	if err != nil {
-		log.Debug("UnsubscribeFromNotification: failed to create client", "err", err)
-		return err
-	}
-
-	endpoint := fmt.Sprintf("notifications/threads/%s/subscription", threadID)
-	log.Debug("UnsubscribeFromNotification: calling DELETE", "endpoint", endpoint)
-
-	// GitHub returns 204 No Content for successful unsubscribe, with no body
-	// Use nil response to avoid JSON parsing empty body
-	err = client.Delete(endpoint, nil)
-	if err != nil {
-		log.Error("UnsubscribeFromNotification: DELETE failed", "err", err)
-		return err
-	}
-
-	log.Debug("UnsubscribeFromNotification: successfully unsubscribed")
-
-	return nil
-} */
 
 // MarkNotificationAsDone marks a notification as done using the official API
 func MarkNotificationAsDone(threadID string) error {
