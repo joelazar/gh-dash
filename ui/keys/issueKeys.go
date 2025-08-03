@@ -46,7 +46,7 @@ var IssueKeys = IssueKeyMap{
 	),
 	ViewPRs: key.NewBinding(
 		key.WithKeys("s"),
-		key.WithHelp("s", "switch to Notifications"),
+		key.WithHelp("s", "switch view"),
 	),
 }
 
