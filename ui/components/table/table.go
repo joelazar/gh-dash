@@ -2,11 +2,13 @@ package table
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 
 	"github.com/dlvhdr/gh-dash/v4/ui/common"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/listviewport"
@@ -24,6 +26,10 @@ type Model struct {
 	loadingSpinner spinner.Model
 	dimensions     constants.Dimensions
 	rowsViewport   listviewport.Model
+	// Performance optimization: cache rendered content
+	cachedContent      string
+	cachedContentValid bool
+	lastSelectedRow    int
 }
 
 type Column struct {
@@ -110,6 +116,8 @@ func (m *Model) SetDimensions(dimensions constants.Dimensions) {
 		Width:  m.dimensions.Width,
 		Height: m.dimensions.Height,
 	})
+	// Invalidate cache when dimensions change
+	m.cachedContentValid = false
 }
 
 func (m *Model) ResetCurrItem() {
@@ -158,22 +166,103 @@ func (m *Model) cacheColumnWidths() {
 	}
 }
 
+func (m *Model) createEmptyRow() string {
+	// Create an empty row with the same width as regular rows but minimal content
+	// This acts as a placeholder for virtual scrolling
+	var rowParts []string
+	
+	for _, col := range m.getShownColumns() {
+		width := col.ComputedWidth
+		if width == 0 {
+			width = 10 // fallback width
+		}
+		// Create empty space with same width as actual content
+		emptyContent := strings.Repeat(" ", width)
+		rowParts = append(rowParts, emptyContent)
+	}
+	
+	return lipgloss.JoinHorizontal(lipgloss.Left, rowParts...)
+}
+
 func (m *Model) SyncViewPortContent() {
+	totalRows := len(m.Rows)
+	if totalRows == 0 {
+		m.rowsViewport.SyncViewPort("")
+		m.cachedContentValid = false
+		return
+	}
+	
+	currentSelectedRow := m.rowsViewport.GetCurrItem()
+	
+	// Check if we can use cached content (no data changes, only selection changed)
+	if m.cachedContentValid && currentSelectedRow != m.lastSelectedRow && totalRows > 50 {
+		log.Debug("PERF: SyncViewPortContent using selection-only update", "totalRows", totalRows, "oldSelection", m.lastSelectedRow, "newSelection", currentSelectedRow)
+		
+		// For large lists, try to avoid full re-render when only selection changes
+		// Re-render just the affected rows: old selection and new selection
+		headerColumns := m.renderHeaderColumns()
+		m.cacheColumnWidths()
+		
+		start := time.Now()
+		
+		// Split cached content into lines and update only the changed rows
+		lines := strings.Split(m.cachedContent, "\n")
+		if m.lastSelectedRow < len(lines) && currentSelectedRow < len(lines) {
+			// Update old selected row (unselect it)
+			if m.lastSelectedRow >= 0 && m.lastSelectedRow < totalRows {
+				lines[m.lastSelectedRow] = m.renderRow(m.lastSelectedRow, headerColumns)
+			}
+			// Update new selected row (select it)
+			if currentSelectedRow >= 0 && currentSelectedRow < totalRows {
+				lines[currentSelectedRow] = m.renderRow(currentSelectedRow, headerColumns)
+			}
+			
+			updatedContent := strings.Join(lines, "\n")
+			m.rowsViewport.SyncViewPort(updatedContent)
+			m.cachedContent = updatedContent
+			m.lastSelectedRow = currentSelectedRow
+			
+			log.Debug("PERF: SyncViewPortContent selection update complete", "totalRows", totalRows, "updateTime", time.Since(start))
+			return
+		}
+	}
+	
+	// Full re-render needed (data changed or cache invalid)
+	if totalRows > 100 {
+		log.Debug("PERF: SyncViewPortContent full render", "totalRows", totalRows, "reason", "data_changed_or_cache_invalid")
+	}
+	
 	headerColumns := m.renderHeaderColumns()
 	m.cacheColumnWidths()
-	renderedRows := make([]string, 0, len(m.Rows))
+	
+	start := time.Now()
+	renderedRows := make([]string, 0, totalRows)
 	for i := range m.Rows {
 		renderedRows = append(renderedRows, m.renderRow(i, headerColumns))
 	}
-
-	m.rowsViewport.SyncViewPort(
-		lipgloss.JoinVertical(lipgloss.Left, renderedRows...),
-	)
+	renderTime := time.Since(start)
+	
+	content := lipgloss.JoinVertical(lipgloss.Left, renderedRows...)
+	
+	syncStart := time.Now()
+	m.rowsViewport.SyncViewPort(content)
+	syncTime := time.Since(syncStart)
+	
+	// Cache the rendered content
+	m.cachedContent = content
+	m.cachedContentValid = true
+	m.lastSelectedRow = currentSelectedRow
+	
+	if totalRows > 100 {
+		log.Debug("PERF: SyncViewPortContent full render complete", "totalRows", totalRows, "renderTime", renderTime, "syncTime", syncTime, "totalTime", time.Since(start))
+	}
 }
 
 func (m *Model) SetRows(rows []Row) {
 	m.Rows = rows
 	m.rowsViewport.SetNumItems(len(m.Rows))
+	// Invalidate cache when data changes
+	m.cachedContentValid = false
 	m.SyncViewPortContent()
 }
 

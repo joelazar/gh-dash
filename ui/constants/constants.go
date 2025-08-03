@@ -57,4 +57,20 @@ const (
 	OwnerIcon = "󱇐" // \udb84\uddd0 nf-md-crown_outline
 
 	UnknownRoleIcon = "󱐡" // \udb85\udc21 nf-md-incognito_circle
+
+	// Notification icons
+	// TODO: finish this
+	NotificationIcon    = ""  // Bell icon for notifications
+	UnreadIcon          = ""  // Bell icon for unread notifications
+	ReadIcon            = ""  // Check icon for read notifications
+	ReviewRequestedIcon = "󰯢" // Review icon
+	MentionIcon         = ""  // At symbol for mentions
+	AssignIcon          = "󱡢" // Person plus for assignments
+	CommentNotifIcon    = ""  // Comment icon for comments
+	UpdatedIcon         = "󱦻" // Clock icon for updates
+	CreatedIcon         = "󱡢" // Calendar icon for creation
+	RepoIcon            = ""  // Repository icon
+	ReasonIcon          = ""  // Tag icon for reasons
+	TypeIcon            = ""  // File icon for types
+	BookmarkIcon        = "󰃃" // Bookmark icon
 )
