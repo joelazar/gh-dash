@@ -27,6 +27,8 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/ui/components/footer"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/issuesidebar"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/issuessection"
+	"github.com/dlvhdr/gh-dash/v4/ui/components/notificationsidebar"
+	"github.com/dlvhdr/gh-dash/v4/ui/components/notificationssection"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/prsidebar"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/prssection"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/reposection"
@@ -40,26 +42,28 @@ import (
 )
 
 type Model struct {
-	keys          *keys.KeyMap
-	sidebar       sidebar.Model
-	prSidebar     prsidebar.Model
-	issueSidebar  issuesidebar.Model
-	branchSidebar branchsidebar.Model
-	currSectionId int
-	footer        footer.Model
-	repo          section.Section
-	prs           []section.Section
-	issues        []section.Section
-	tabs          tabs.Model
-	ctx           *context.ProgramContext
-	taskSpinner   spinner.Model
-	tasks         map[string]context.Task
+	keys                *keys.KeyMap
+	sidebar             sidebar.Model
+	prSidebar           prsidebar.Model
+	issueSidebar        issuesidebar.Model
+	branchSidebar       branchsidebar.Model
+	notificationSidebar notificationsidebar.Model
+	currSectionId       int
+	footer              footer.Model
+	repo                section.Section
+	prs                 []section.Section
+	issues              []section.Section
+	notifications       []section.Section
+	tabs                tabs.Model
+	ctx                 *context.ProgramContext
+	taskSpinner         spinner.Model
+	tasks               map[string]context.Task
 }
 
 func NewModel(repoPath string, configPath string) Model {
 	taskSpinner := spinner.Model{Spinner: spinner.Dot}
 	m := Model{
-		keys:        keys.Keys,
+		keys:        &keys.Keys,
 		sidebar:     sidebar.NewModel(),
 		taskSpinner: taskSpinner,
 		tasks:       map[string]context.Task{},
@@ -92,6 +96,7 @@ func NewModel(repoPath string, configPath string) Model {
 	m.prSidebar = prsidebar.NewModel(m.ctx)
 	m.issueSidebar = issuesidebar.NewModel(m.ctx)
 	m.branchSidebar = branchsidebar.NewModel(m.ctx)
+	m.notificationSidebar = notificationsidebar.NewModel(m.ctx)
 	m.tabs = tabs.NewModel(m.ctx)
 
 	return m
@@ -143,6 +148,7 @@ func (m *Model) initScreen() tea.Msg {
 		cfg.Keybindings.Issues,
 		cfg.Keybindings.Prs,
 		cfg.Keybindings.Branches,
+		cfg.Keybindings.Notifications,
 	)
 	if err != nil {
 		showError(err)
@@ -211,38 +217,48 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.Down):
-			prevRow := currSection.CurrRow()
-			nextRow := currSection.NextRow()
-			if prevRow != nextRow && nextRow == currSection.NumRows()-1 && m.ctx.View != config.RepoView {
-				cmds = append(cmds, currSection.FetchNextPageSectionRows()...)
+			if currSection != nil {
+				prevRow := currSection.CurrRow()
+				nextRow := currSection.NextRow()
+				if prevRow != nextRow && nextRow == currSection.NumRows()-1 && m.ctx.View != config.RepoView {
+					cmds = append(cmds, currSection.FetchNextPageSectionRows()...)
+				}
+				cmd = m.onViewedRowChanged()
 			}
-			cmd = m.onViewedRowChanged()
 
 		case key.Matches(msg, m.keys.Up):
-			currSection.PrevRow()
-			m.onViewedRowChanged()
+			if currSection != nil {
+				currSection.PrevRow()
+				m.onViewedRowChanged()
+			}
 
 		case key.Matches(msg, m.keys.FirstLine):
-			currSection.FirstItem()
-			cmd = m.onViewedRowChanged()
+			if currSection != nil {
+				currSection.FirstItem()
+				cmd = m.onViewedRowChanged()
+			}
 
 		case key.Matches(msg, m.keys.LastLine):
-			if currSection.CurrRow()+1 < currSection.NumRows() {
-				cmds = append(cmds, currSection.FetchNextPageSectionRows()...)
+			if currSection != nil {
+				if currSection.CurrRow()+1 < currSection.NumRows() {
+					cmds = append(cmds, currSection.FetchNextPageSectionRows()...)
+				}
+				currSection.LastItem()
+				cmd = m.onViewedRowChanged()
 			}
-			currSection.LastItem()
-			cmd = m.onViewedRowChanged()
 
 		case key.Matches(msg, m.keys.TogglePreview):
 			m.sidebar.IsOpen = !m.sidebar.IsOpen
 			m.syncMainContentWidth()
 
 		case key.Matches(msg, m.keys.Refresh):
-			currSection.ResetFilters()
-			currSection.ResetRows()
-			m.syncSidebar()
-			currSection.SetIsLoading(true)
-			cmds = append(cmds, currSection.FetchNextPageSectionRows()...)
+			if currSection != nil {
+				currSection.ResetFilters()
+				currSection.ResetRows()
+				m.syncSidebar()
+				currSection.SetIsLoading(true)
+				cmds = append(cmds, currSection.FetchNextPageSectionRows()...)
+			}
 
 		case key.Matches(msg, m.keys.RefreshAll):
 			newSections, fetchSectionsCmds := m.fetchAllViewSections()
@@ -506,6 +522,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.onViewedRowChanged()
 			}
 
+		case m.ctx.View == config.NotificationsView:
+			switch {
+			case key.Matches(msg, m.keys.OpenGithub):
+				cmds = append(cmds, m.openBrowser())
+
+			case key.Matches(msg, keys.NotificationKeys.MarkRead):
+				cmd = m.notificationSidebar.MarkAsRead()
+				cmds = append(cmds, cmd)
+
+			case key.Matches(msg, keys.NotificationKeys.MarkDone):
+				cmd = m.notificationSidebar.MarkAsDone()
+				cmds = append(cmds, cmd)
+
+
+			case key.Matches(msg, keys.NotificationKeys.ViewSwitch):
+				m.ctx.View = m.switchSelectedView()
+				m.syncMainContentWidth()
+				m.setCurrSectionId(m.getCurrentViewDefaultSection())
+				m.tabs.UpdateSectionsConfigs(m.ctx)
+
+				currSections := m.getCurrentViewSections()
+				if len(currSections) == 0 {
+					newSections, fetchSectionsCmds := m.fetchAllViewSections()
+					m.setCurrentViewSections(newSections)
+					cmd = fetchSectionsCmds
+				}
+				m.onViewedRowChanged()
+			}
 		}
 
 	case initMsg:
@@ -531,6 +575,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ctx.User = msg.user
 
 	case constants.TaskFinishedMsg:
+		log.Debug("UI: received TaskFinishedMsg",
+			"taskId", msg.TaskId,
+			"sectionId", msg.SectionId,
+			"sectionType", msg.SectionType,
+			"hasInnerMsg", msg.Msg != nil)
+
 		task, ok := m.tasks[msg.TaskId]
 		if ok {
 			log.Debug("Task finished", "id", task.Id)
@@ -549,11 +599,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 			cmds = append(cmds, clear)
 
+			log.Debug("UI: calling updateSection",
+				"sectionId", msg.SectionId,
+				"sectionType", msg.SectionType)
 			scmd := m.updateSection(msg.SectionId, msg.SectionType, msg.Msg)
 			cmds = append(cmds, scmd)
 
 			syncCmd := m.syncSidebar()
 			cmds = append(cmds, syncCmd)
+		} else {
+			log.Debug("UI: task not found in tasks map", "taskId", msg.TaskId)
+		}
+
+	case notificationssection.NotificationsFetchedMsg:
+		cmd = m.updateSection(msg.SectionId, notificationssection.SectionType, msg)
+		if msg.SectionId == m.currSectionId {
+			m.onViewedRowChanged()
 		}
 
 	case spinner.TickMsg:
@@ -668,11 +729,16 @@ func (m Model) View() string {
 	content := "No sections defined"
 	currSection := m.getCurrSection()
 	if currSection != nil {
-		content = lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			m.getCurrSection().View(),
-			m.sidebar.View(),
-		)
+		if m.ctx.View == config.NotificationsView {
+			// For notifications view, don't show sidebar to maximize table width
+			content = m.getCurrSection().View()
+		} else {
+			content = lipgloss.JoinHorizontal(
+				lipgloss.Top,
+				m.getCurrSection().View(),
+				m.sidebar.View(),
+			)
+		}
 	}
 	s.WriteString(content)
 	s.WriteString("\n")
@@ -736,17 +802,45 @@ func (m *Model) syncProgramContext() {
 }
 
 func (m *Model) updateSection(id int, sType string, msg tea.Msg) (cmd tea.Cmd) {
+	// Skip logging for frequent/noisy messages
+	msgType := fmt.Sprintf("%T", msg)
+	if msgType != "spinner.TickMsg" {
+		log.Debug("updateSection: called",
+			"id", id,
+			"sType", sType,
+			"msgType", msgType)
+	}
+
 	var updatedSection section.Section
 	switch sType {
 	case reposection.SectionType:
+		log.Debug("updateSection: updating repo section")
 		m.repo, cmd = m.repo.Update(msg)
 
 	case prssection.SectionType:
-		updatedSection, cmd = m.prs[id].Update(msg)
-		m.prs[id] = updatedSection
+		log.Debug("updateSection: updating PR section", "id", id, "prsCount", len(m.prs))
+		if id >= 0 && id < len(m.prs) {
+			updatedSection, cmd = m.prs[id].Update(msg)
+			m.prs[id] = updatedSection
+		}
 	case issuessection.SectionType:
-		updatedSection, cmd = m.issues[id].Update(msg)
-		m.issues[id] = updatedSection
+		log.Debug("updateSection: updating issues section", "id", id, "issuesCount", len(m.issues))
+		if id >= 0 && id < len(m.issues) {
+			updatedSection, cmd = m.issues[id].Update(msg)
+			m.issues[id] = updatedSection
+		}
+	case notificationssection.SectionType:
+		log.Debug("updateSection: updating notifications section", "id", id, "notificationsCount", len(m.notifications))
+		if id >= 0 && id < len(m.notifications) {
+			log.Debug("updateSection: calling notifications section Update")
+			updatedSection, cmd = m.notifications[id].Update(msg)
+			m.notifications[id] = updatedSection
+			log.Debug("updateSection: notifications section updated")
+		} else {
+			log.Debug("updateSection: invalid notification section id", "id", id, "maxId", len(m.notifications)-1)
+		}
+	default:
+		log.Debug("updateSection: unknown section type", "sType", sType)
 	}
 
 	return cmd
@@ -766,7 +860,8 @@ func (m *Model) updateCurrentSection(msg tea.Msg) (cmd tea.Cmd) {
 
 func (m *Model) syncMainContentWidth() {
 	sideBarOffset := 0
-	if m.sidebar.IsOpen {
+	// For notifications view, use full width (no sidebar)
+	if m.ctx.View != config.NotificationsView && m.sidebar.IsOpen {
 		sideBarOffset = m.ctx.Config.Defaults.Preview.Width
 	}
 	m.ctx.MainContentWidth = m.ctx.ScreenWidth - sideBarOffset
@@ -796,6 +891,11 @@ func (m *Model) syncSidebar() tea.Cmd {
 		m.issueSidebar.SetRow(row)
 		m.issueSidebar.SetWidth(width)
 		m.sidebar.SetContent(m.issueSidebar.View())
+	case *data.Notification:
+		m.notificationSidebar.SetSectionId(m.currSectionId)
+		m.notificationSidebar.SetRow(row)
+		m.notificationSidebar.SetWidth(width)
+		m.sidebar.SetContent(m.notificationSidebar.View())
 	}
 
 	return cmd
@@ -815,9 +915,13 @@ func (m *Model) fetchAllViewSections() ([]section.Section, tea.Cmd) {
 		s, prcmds := prssection.FetchAllSections(m.ctx, m.prs)
 		cmds = append(cmds, prcmds)
 		return s, tea.Batch(cmds...)
-	} else {
+	} else if m.ctx.View == config.IssuesView {
 		s, issuecmds := issuessection.FetchAllSections(m.ctx)
 		cmds = append(cmds, issuecmds)
+		return s, tea.Batch(cmds...)
+	} else {
+		s, notificationcmds := notificationssection.FetchAllSections(m.ctx)
+		cmds = append(cmds, notificationcmds)
 		return s, tea.Batch(cmds...)
 	}
 }
@@ -827,8 +931,10 @@ func (m *Model) getCurrentViewSections() []section.Section {
 		return []section.Section{m.repo}
 	} else if m.ctx.View == config.PRsView {
 		return m.prs
-	} else {
+	} else if m.ctx.View == config.IssuesView {
 		return m.issues
+	} else {
+		return m.notifications
 	}
 }
 
@@ -837,6 +943,10 @@ func (m *Model) getCurrentViewDefaultSection() int {
 		return 0
 	} else if m.ctx.View == config.PRsView {
 		return 1
+	} else if m.ctx.View == config.IssuesView {
+		return 1
+	} else if m.ctx.View == config.NotificationsView {
+		return 0
 	} else {
 		return 1
 	}
@@ -858,7 +968,7 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 			time.Now(),
 		)
 		m.prs = append([]section.Section{&search}, newSections...)
-	} else {
+	} else if m.ctx.View == config.IssuesView {
 		search := issuessection.NewModel(
 			0,
 			m.ctx,
@@ -870,6 +980,18 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 			time.Now(),
 		)
 		m.issues = append([]section.Section{&search}, newSections...)
+	} else if m.ctx.View == config.NotificationsView {
+		search := notificationssection.NewModel(
+			0,
+			m.ctx,
+			config.NotificationsSectionConfig{
+				Title:   "",
+				Filters: "",
+			},
+			time.Now(),
+			time.Now(),
+		)
+		m.notifications = append([]section.Section{&search}, newSections...)
 	}
 }
 
@@ -883,6 +1005,8 @@ func (m *Model) switchSelectedView() config.ViewType {
 		case m.ctx.View == config.PRsView:
 			return config.IssuesView
 		case m.ctx.View == config.IssuesView:
+			return config.NotificationsView
+		case m.ctx.View == config.NotificationsView:
 			return config.RepoView
 		}
 	}
@@ -890,6 +1014,8 @@ func (m *Model) switchSelectedView() config.ViewType {
 	switch true {
 	case m.ctx.View == config.PRsView:
 		return config.IssuesView
+	case m.ctx.View == config.IssuesView:
+		return config.NotificationsView
 	default:
 		return config.PRsView
 	}

@@ -108,8 +108,8 @@ func (m Model) View() string {
 	}
 
 	if m.ShowAll {
-		keymap := keys.CreateKeyMapForView(m.ctx.View)
-		fullHelp := m.help.View(keymap)
+		keymap := keys.Keys.FullHelp(m.ctx.View)
+		fullHelp := m.help.FullHelpView(keymap)
 		return lipgloss.JoinVertical(lipgloss.Top, footer, fullHelp)
 	}
 
@@ -130,10 +130,12 @@ func (m *Model) renderViewButton(view config.ViewType) string {
 	if view == config.IssuesView {
 		v = " Issues"
 	}
+	if view == config.NotificationsView {
+		v = " Notifications"
+	}
 
 	if m.ctx.View == view {
 		return m.ctx.Styles.ViewSwitcher.ActiveView.Render(v)
-
 	}
 	return m.ctx.Styles.ViewSwitcher.InactiveView.Render(v)
 }
@@ -158,6 +160,8 @@ func (m *Model) renderViewSwitcher(ctx *context.ProgramContext) string {
 		ctx.Styles.ViewSwitcher.ViewsSeparator.PaddingLeft(1).Render(m.renderViewButton(config.PRsView)),
 		ctx.Styles.ViewSwitcher.ViewsSeparator.Render(" │ "),
 		m.renderViewButton(config.IssuesView),
+		ctx.Styles.ViewSwitcher.ViewsSeparator.Render(" │ "),
+		m.renderViewButton(config.NotificationsView),
 		lipgloss.NewStyle().Background(ctx.Styles.Common.FooterStyle.GetBackground()).Foreground(ctx.Styles.ViewSwitcher.ViewsSeparator.GetBackground()).Render(" "),
 		repo,
 		ctx.Styles.Common.FooterStyle.Foreground(m.ctx.Theme.FaintText).Render(" • "),

@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 
 	"github.com/dlvhdr/gh-dash/v4/ui/constants"
 	"github.com/dlvhdr/gh-dash/v4/ui/context"
@@ -55,8 +56,26 @@ func NewModel(
 }
 
 func (m *Model) SetNumItems(numItems int) {
+	oldNumItems := m.NumCurrentItems
 	m.NumCurrentItems = numItems
-	m.bottomBoundId = utils.Min(m.NumCurrentItems-1, m.getNumPrsPerPage()-1)
+	itemsPerPage := m.getNumPrsPerPage()
+	
+	// Only reset bounds if this is initial setup (no items before) or items decreased
+	if oldNumItems == 0 || numItems < oldNumItems {
+		// Reset bounds for initial setup or when items are removed
+		m.topBoundId = 0
+		m.bottomBoundId = utils.Min(m.NumCurrentItems-1, itemsPerPage-1)
+	} else {
+		// Items were added (like page 2) - preserve current viewport position
+		// Only extend bottomBoundId if current viewport can show more items
+		maxVisibleBottom := m.topBoundId + itemsPerPage - 1
+		m.bottomBoundId = utils.Min(m.NumCurrentItems-1, maxVisibleBottom)
+	}
+	
+	// Debug: check if bounds are reasonable
+	if numItems > 50 {
+		log.Debug("SetNumItems", "oldItems", oldNumItems, "newItems", numItems, "itemsPerPage", itemsPerPage, "topBound", m.topBoundId, "bottomBound", m.bottomBoundId, "currId", m.currId)
+	}
 }
 
 func (m *Model) SetTotalItems(total int) {
@@ -83,40 +102,67 @@ func (m *Model) GetCurrItem() int {
 	return m.currId
 }
 
+func (m *Model) GetVisibleBounds() (int, int) {
+	return m.topBoundId, m.bottomBoundId
+}
+
 func (m *Model) NextItem() int {
-	atBottomOfViewport := m.currId >= m.bottomBoundId
-	if atBottomOfViewport {
+	// Don't go beyond the last item
+	if m.currId >= m.NumCurrentItems-1 {
+		return m.currId
+	}
+
+	// Move cursor down first
+	m.currId += 1
+
+	// If cursor is now beyond the bottom of visible area, scroll viewport down
+	if m.currId > m.bottomBoundId {
 		m.topBoundId += 1
 		m.bottomBoundId += 1
 		m.viewport.LineDown(m.ListItemHeight)
 	}
 
-	newId := utils.Min(m.currId+1, m.NumCurrentItems-1)
-	newId = utils.Max(newId, 0)
-	m.currId = newId
 	return m.currId
 }
 
 func (m *Model) PrevItem() int {
-	atTopOfViewport := m.currId < m.topBoundId
-	if atTopOfViewport {
+	// Don't go beyond the first item
+	if m.currId <= 0 {
+		return m.currId
+	}
+
+	// Move cursor up first
+	m.currId -= 1
+
+	// If cursor is now above the top of visible area, scroll viewport up
+	if m.currId < m.topBoundId {
 		m.topBoundId -= 1
 		m.bottomBoundId -= 1
 		m.viewport.LineUp(m.ListItemHeight)
 	}
 
-	m.currId = utils.Max(m.currId-1, 0)
 	return m.currId
 }
 
 func (m *Model) FirstItem() int {
 	m.currId = 0
+	m.topBoundId = 0
+	m.bottomBoundId = utils.Min(m.NumCurrentItems-1, m.getNumPrsPerPage()-1)
 	m.viewport.GotoTop()
 	return m.currId
 }
 
 func (m *Model) LastItem() int {
 	m.currId = m.NumCurrentItems - 1
+	// Update bounds to reflect bottom position
+	itemsPerPage := m.getNumPrsPerPage()
+	if m.NumCurrentItems > itemsPerPage {
+		m.bottomBoundId = m.NumCurrentItems - 1
+		m.topBoundId = m.NumCurrentItems - itemsPerPage
+	} else {
+		m.topBoundId = 0
+		m.bottomBoundId = m.NumCurrentItems - 1
+	}
 	m.viewport.GotoBottom()
 	return m.currId
 }
