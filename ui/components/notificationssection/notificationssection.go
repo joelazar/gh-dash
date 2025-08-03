@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/log"
 	"github.com/dlvhdr/gh-dash/v4/config"
 	"github.com/dlvhdr/gh-dash/v4/data"
 	"github.com/dlvhdr/gh-dash/v4/ui/components/notification"
@@ -45,7 +44,6 @@ func NewModel(id int, ctx *context.ProgramContext, cfg config.NotificationsSecti
 	m.Notifications = []data.Notification{}
 	m.CurrentPage = 1
 	m.HasNextPage = true
-	// Set initial loading state to show "Loading notifications..." instead of empty state
 	m.SetIsLoading(true)
 	return m
 }
@@ -73,10 +71,9 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				m.SearchValue = newSearchValue
 				m.SetIsSearching(false)
 				m.ResetRows()
-				m.SetIsLoading(true) // Show loading state while fetching new results
+				m.SetIsLoading(true)
 
-				// Always fetch from page 1 when search changes
-				limit := 50 // fallback default
+				limit := 50
 				if m.Ctx != nil && m.Ctx.Config != nil {
 					limit = m.Ctx.Config.Defaults.NotificationsLimit
 				}
@@ -112,18 +109,14 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 	case NotificationsFetchedMsg:
 		if msg.SectionId == m.Id {
 			if msg.IsFirstPage {
-				// Replace all notifications for first page
 				m.SetRows(msg.Notifications)
 				m.CurrentPage = 1
 			} else {
-				// Append notifications for subsequent pages
 				m.Notifications = append(m.Notifications, msg.Notifications...)
 				m.CurrentPage = msg.Page
-				// Update table rows using the new component
 				m.Table.SetRows(m.BuildRows())
 			}
-			// Calculate the limit used for this fetch to determine if there are more pages
-			limit := 50 // fallback default
+			limit := 50
 			if m.Ctx != nil && m.Ctx.Config != nil {
 				limit = m.Ctx.Config.Defaults.NotificationsLimit
 			}
@@ -131,9 +124,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				limit = *m.Config.Limit
 			}
 
-			// Check if we can fetch more pages based on:
-			// 1. Whether we got a full page of results
-			// 2. Whether we've hit the maximum total limit
 			maxLimit := 0
 			if m.Ctx != nil && m.Ctx.Config != nil {
 				maxLimit = m.Ctx.Config.Defaults.NotificationsMaxLimit
@@ -158,7 +148,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				}
 				if msg.IsDone != nil {
 					if *msg.IsDone {
-						// remove done notification from list
 						m.Notifications = append(m.Notifications[0:i], (m.Notifications[i+1 : len(m.Notifications)])...)
 					}
 				}
@@ -177,20 +166,12 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 }
 
 func (m *Model) SetRows(notifications []data.Notification) {
-	log.Debug("PERF: SetRows called - setting %d notifications (replacing %d existing)", len(notifications), len(m.Notifications))
-	start := time.Now()
-
 	m.Notifications = notifications
-	rowStart := time.Now()
 	m.Table.SetRows(m.BuildRows())
-	log.Debug("PERF: SetRows: BuildRows took %v", time.Since(rowStart))
-
-	log.Debug("PERF: SetRows COMPLETE in %v - set %d notifications", time.Since(start), len(notifications))
 }
 
 func GetSectionColumns(ctx *context.ProgramContext) []table.Column {
 	dLayout := ctx.Config.Defaults.Layout.Notifications
-	// Currently notifications don't have section-specific configs, so we just use defaults
 
 	repoLayout := dLayout.Repo
 	titleLayout := dLayout.Title
@@ -232,7 +213,6 @@ func GetSectionColumns(ctx *context.ProgramContext) []table.Column {
 	}
 }
 
-// Implement section.Section interface methods
 func (m Model) GetId() int                  { return m.Id }
 func (m Model) GetType() string             { return SectionType }
 func (m Model) GetItemSingularForm() string { return "notification" }
@@ -250,9 +230,6 @@ func (m Model) GetCurrRow() data.RowData {
 }
 
 func (m Model) FetchNextPageSectionRows() []tea.Cmd {
-	log.Debug("PERF: FetchNextPageSectionRows called - currentPage: %d, hasNextPage: %v, totalNotifications: %d", m.CurrentPage, m.HasNextPage, len(m.Notifications))
-	start := time.Now()
-
 	// Calculate the limit to use - section-specific limit or default
 	limit := 50 // fallback default
 	if m.Ctx != nil && m.Ctx.Config != nil {
@@ -261,62 +238,46 @@ func (m Model) FetchNextPageSectionRows() []tea.Cmd {
 	if m.Config.Limit != nil {
 		limit = *m.Config.Limit
 	}
-	log.Debug("PERF: FetchNextPageSectionRows: calculated limit: %d", limit)
 
 	// Check if we've already hit the maximum limit
 	maxLimit := 0
 	if m.Ctx != nil && m.Ctx.Config != nil {
 		maxLimit = m.Ctx.Config.Defaults.NotificationsMaxLimit
 	}
-	log.Debug("PERF: FetchNextPageSectionRows: maxLimit check - maxLimit: %d, currentCount: %d", maxLimit, len(m.Notifications))
 	if maxLimit > 0 && len(m.Notifications) >= maxLimit {
-		log.Debug("PERF: FetchNextPageSectionRows: max limit reached, returning nil")
-		return nil // Don't fetch more if we've reached the max limit
+		return nil
 	}
 
 	// If we have no notifications (after reset), fetch first page
 	if len(m.Notifications) == 0 {
-		log.Debug("PERF: FetchNextPageSectionRows: no notifications, fetching first page")
 		if m.Ctx != nil {
 			filters := m.GetFilters()
-			log.Debug("PERF: FetchNextPageSectionRows: fetching first page with filters: '%s'", filters)
 			cmd := FetchNotificationsWithLimits(m.Ctx, m.Id, limit, filters)
-			log.Debug("PERF: FetchNextPageSectionRows: returning first page command in %v", time.Since(start))
 			return []tea.Cmd{cmd}
 		} else {
 			// Fallback for tests
-			log.Debug("PERF: FetchNextPageSectionRows: using test fallback")
 			return []tea.Cmd{FetchNotifications(m.Id, limit, "")}
 		}
 	}
 
 	// Otherwise, check if we can fetch next page
 	if !m.HasNextPage {
-		log.Debug("PERF: FetchNextPageSectionRows: no next page available, returning nil")
 		return nil
 	}
 	// Increment the page for the next fetch
 	nextPage := m.CurrentPage + 1
-	log.Debug("PERF: FetchNextPageSectionRows: fetching next page %d", nextPage)
 
 	if m.Ctx != nil {
 		filters := m.GetFilters()
-		log.Debug("PERF: FetchNextPageSectionRows: fetching page %d with filters: '%s'", nextPage, filters)
 		cmd := FetchNotificationsPaginatedWithLimits(m.Ctx, m.Id, nextPage, limit, filters)
-		log.Debug("PERF: FetchNextPageSectionRows: returning page %d command in %v", nextPage, time.Since(start))
 		return []tea.Cmd{cmd}
 	} else {
 		// Fallback for tests
-		log.Debug("PERF: FetchNextPageSectionRows: using test fallback for page %d", nextPage)
 		return []tea.Cmd{FetchNotificationsPaginated(m.Id, nextPage, limit, "")}
 	}
 }
 
-// BuildRows implements the Table interface
 func (m Model) BuildRows() []table.Row {
-	log.Debug("PERF: BuildRows START - building %d notification rows", len(m.Notifications))
-	start := time.Now()
-
 	rows := make([]table.Row, len(m.Notifications))
 	for i, n := range m.Notifications {
 		notificationModel := notification.Notification{
@@ -325,12 +286,9 @@ func (m Model) BuildRows() []table.Row {
 		}
 		rows[i] = notificationModel.ToTableRow()
 	}
-
-	log.Debug("PERF: BuildRows COMPLETE in %v - built %d rows", time.Since(start), len(rows))
 	return rows
 }
 
-// GetPagerContent implements the Section interface
 func (m Model) GetPagerContent() string {
 	pagerContent := ""
 	timeElapsed := utils.TimeElapsed(m.LastUpdated())
@@ -354,17 +312,14 @@ func (m Model) GetPagerContent() string {
 	return pager
 }
 
-// GetTotalCount implements the Section interface
 func (m Model) GetTotalCount() int {
 	return len(m.Notifications)
 }
 
-// NumRows implements the Table interface
 func (m Model) NumRows() int {
 	return len(m.Notifications)
 }
 
-// SetIsLoading implements the Table interface
 func (m *Model) SetIsLoading(val bool) {
 	m.IsLoading = val
 	m.Table.SetIsLoading(val)
@@ -372,37 +327,28 @@ func (m *Model) SetIsLoading(val bool) {
 
 func (m *Model) ResetRows() {
 	m.BaseModel.ResetRows()
-	m.Notifications = []data.Notification{} // Clear the notifications data
+	m.Notifications = []data.Notification{}
 	m.CurrentPage = 1
 	m.HasNextPage = true
 }
 
-// GetFilters overrides the base implementation to use the current search bar value
-// when the user is actively searching, allowing filter updates while typing
 func (m *Model) GetFilters() string {
-	// If user is searching and has typed something, temporarily use that value
 	if m.IsSearching && m.SearchBar.Value() != "" {
-		// Temporarily update SearchValue to use the current search bar value
 		originalSearchValue := m.SearchValue
 		m.SearchValue = m.SearchBar.Value()
 		result := m.BaseModel.GetFilters()
 		m.SearchValue = originalSearchValue
 		return result
 	}
-	// Otherwise use the committed SearchValue via the base implementation
 	return m.BaseModel.GetFilters()
 }
 
-// HasRepoNameInConfiguredFilter overrides the base implementation to also check for
-// is:repo(<name>) syntax in addition to repo: prefix
 func (m *Model) HasRepoNameInConfiguredFilter() bool {
-	// Check configured filters for repo: prefix (base behavior)
 	filters := m.Config.Filters
 	if utils.HasExplicitRepoFilter(filters) {
 		return true
 	}
 
-	// Also check current SearchValue for both repo: and is:repo() syntax
 	searchValue := m.SearchValue
 	if m.IsSearching && m.SearchBar.Value() != "" {
 		searchValue = m.SearchBar.Value()
