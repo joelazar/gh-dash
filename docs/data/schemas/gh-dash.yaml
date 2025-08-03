@@ -51,6 +51,26 @@ properties:
           is:open
           involves:@me
           -author:@me
+  notificationsSections:
+    title: Notifications Sections
+    description: Define sections for the dashboard's Notifications view.
+    schematize:
+      weight: 1.5
+      details: |
+        The `notificationsSections` setting defines one or more sections to display in the
+        Notifications view as tabs. Each section needs a title and an optional filter string.
+      default:
+        details: |
+          By default, the Notifications view has two sections: Unread and All.
+        format: yaml
+    type: array
+    items:
+      $ref: ./notifications-section.yaml
+    default:
+      - title: Unread
+        filters: is:unread
+      - title: All
+        filters: ""
   issuesSections:
     title: Issue Sections
     description: Define sections for the dashboard's Issues view.
@@ -189,6 +209,10 @@ properties:
         $ref: ./keybindings/issues.yaml
         schematize:
           weight: 2
+      notifications:
+        $ref: ./keybindings/notifications.yaml
+        schematize:
+          weight: 3
     examples:
       - schematize:
           title: Pin an Issue
