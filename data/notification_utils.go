@@ -17,15 +17,15 @@ func DeduplicateNotifications(notifications []Notification) []Notification {
 	// Key: combination of reason, type, repository, and title
 	// Value: index of the latest notification in the original slice
 	latestMap := make(map[string]int)
-	
+
 	for i, notification := range notifications {
 		// Create a unique key from the fields we want to deduplicate on
-		key := fmt.Sprintf("%s|%s|%s|%s", 
-			string(notification.Reason), 
-			notification.Type, 
-			notification.Repository, 
+		key := fmt.Sprintf("%s|%s|%s|%s",
+			string(notification.Reason),
+			notification.Type,
+			notification.Repository,
 			notification.Title)
-		
+
 		// Check if we've seen this combination before
 		if existingIndex, exists := latestMap[key]; exists {
 			// Keep the one with the later UpdatedAt timestamp
@@ -37,29 +37,29 @@ func DeduplicateNotifications(notifications []Notification) []Notification {
 			latestMap[key] = i
 		}
 	}
-	
+
 	// Collect all the unique (latest) notifications
 	uniqueNotifications := make([]Notification, 0, len(latestMap))
 	addedIndices := make(map[int]bool)
-	
+
 	// Preserve original order by iterating through original slice
 	for i, notification := range notifications {
 		if addedIndices[i] {
 			continue
 		}
-		
-		key := fmt.Sprintf("%s|%s|%s|%s", 
-			string(notification.Reason), 
-			notification.Type, 
-			notification.Repository, 
+
+		key := fmt.Sprintf("%s|%s|%s|%s",
+			string(notification.Reason),
+			notification.Type,
+			notification.Repository,
 			notification.Title)
-		
+
 		if latestIndex, exists := latestMap[key]; exists && latestIndex == i {
 			uniqueNotifications = append(uniqueNotifications, notification)
 			addedIndices[i] = true
 		}
 	}
-	
+
 	log.Debug("deduplicateNotifications", "original", len(notifications), "deduplicated", len(uniqueNotifications))
 	return uniqueNotifications
 }

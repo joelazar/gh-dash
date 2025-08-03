@@ -185,17 +185,17 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 
 			// Check if we got a full page of raw data (before deduplication)
 			gotFullPage := len(msg.Notifications) == limit
-			
+
 			// Check if we're under the max limit (after deduplication)
 			underMaxLimit := maxLimit <= 0 || totalNotifications < maxLimit
-			
+
 			// Be more aggressive about fetching when under maxLimit
 			// Keep fetching if:
 			// 1. We got a full page of raw data, OR
 			// 2. We're significantly under maxLimit (by more than one page size)
 			//    even if the last fetch wasn't full (could be due to deduplication)
-			significantlyUnderLimit := maxLimit > 0 && totalNotifications < (maxLimit - limit)
-			
+			significantlyUnderLimit := maxLimit > 0 && totalNotifications < (maxLimit-limit)
+
 			m.HasNextPage = (gotFullPage || significantlyUnderLimit) && underMaxLimit
 			m.SetIsLoading(false)
 		}

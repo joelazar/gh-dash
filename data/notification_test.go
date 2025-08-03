@@ -175,7 +175,7 @@ func TestDeduplicateNotifications(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			result := DeduplicateNotifications(test.input)
-			
+
 			if len(result) != len(test.expected) {
 				t.Errorf("Expected %d notifications, got %d", len(test.expected), len(result))
 				return
@@ -184,7 +184,7 @@ func TestDeduplicateNotifications(t *testing.T) {
 			// Create maps for easier comparison
 			resultMap := make(map[string]Notification)
 			expectedMap := make(map[string]Notification)
-			
+
 			for _, n := range result {
 				resultMap[n.ID] = n
 			}
@@ -198,7 +198,7 @@ func TestDeduplicateNotifications(t *testing.T) {
 					t.Errorf("Expected notification with ID %s not found in result", id)
 					continue
 				}
-				
+
 				if actual.Title != expected.Title ||
 					actual.Type != expected.Type ||
 					actual.Repository != expected.Repository ||

@@ -397,7 +397,6 @@ func MarkNotificationAsRead(threadID string) error {
 
 // Removed unused, commented-out functions for subscribe/unsubscribe
 
-
 // MarkNotificationAsDone marks a notification as done using the official API
 func MarkNotificationAsDone(threadID string) error {
 	log.Debug("MarkNotificationAsDone", "threadID", threadID)
@@ -441,7 +440,6 @@ func filterNotificationsByAge(notifications []Notification, maxAgeDays int) []No
 	log.Debug("filterNotificationsByAge", "original", len(notifications), "filtered", len(filtered), "maxAgeDays", maxAgeDays)
 	return filtered
 }
-
 
 func convertURL(apiURL string) string {
 	if apiURL == "" {

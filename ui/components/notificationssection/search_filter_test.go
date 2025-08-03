@@ -44,22 +44,22 @@ func TestFilterByRepo(t *testing.T) {
 			Type:  tea.KeyRunes,
 			Runes: []rune{'f'},
 		}
-		
+
 		// Test that the 'f' key matches the FilterByRepo binding
 		matches := key.Matches(keyMsg, keys.NotificationKeys.FilterByRepo)
 		require.True(t, matches, "The 'f' key should match the FilterByRepo binding")
-		
+
 		// Test that the help text is correct
 		help := keys.NotificationKeys.FilterByRepo.Help()
 		require.Equal(t, "f", help.Key, "Key should be 'f'")
 		require.Equal(t, "filter by repo", help.Desc, "Description should be 'filter by repo'")
 	})
-	
+
 	t.Run("filter by repo logic works correctly", func(t *testing.T) {
 		// Test the core logic without requiring full model setup
 		testRepo := "owner/test-repo"
 		expectedFilter := "repo:" + testRepo
-		
+
 		// This tests the format that would be used in the actual implementation
 		require.Equal(t, "repo:owner/test-repo", expectedFilter, "Filter format should be correct")
 	})
@@ -72,20 +72,20 @@ func TestResetFilter(t *testing.T) {
 			Type:  tea.KeyRunes,
 			Runes: []rune{'F'},
 		}
-		
+
 		// Test that the 'F' key matches the ResetFilter binding
 		matches := key.Matches(keyMsg, keys.NotificationKeys.ResetFilter)
 		require.True(t, matches, "The 'F' key should match the ResetFilter binding")
-		
+
 		// Test that the help text is correct
 		help := keys.NotificationKeys.ResetFilter.Help()
 		require.Equal(t, "F", help.Key, "Key should be 'F'")
 		require.Equal(t, "reset filter", help.Desc, "Description should be 'reset filter'")
 	})
-	
+
 	t.Run("reset filter is included in help system", func(t *testing.T) {
 		helpBindings := keys.NotificationFullHelp()
-		
+
 		// Check that ResetFilter is included in the help bindings
 		found := false
 		for _, binding := range helpBindings {
