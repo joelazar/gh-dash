@@ -1,6 +1,6 @@
 # gh-dash
 
-✨ A GitHub (`gh`) CLI extension to display a dashboard with **pull requests** and **issues** by filters you care about.
+✨ A GitHub (`gh`) CLI extension to display a dashboard with **pull requests**, **issues**, and **notifications** by filters you care about.
 
 <a href="https://github.com/charmbracelet/bubbletea/releases"><img src="https://img.shields.io/github/release/dlvhdr/gh-dash.svg" alt="Latest Release"></a>
 
@@ -19,15 +19,16 @@ Check out this 10/10 video by [charm.sh ✨](https://charm.sh) explaining how gh
 ## ✨ Features
 
 - 🌅 fully configurable - define sections using GitHub filters
-- 🔍 search for both prs and issues
+- 🔍 search for prs, issues, and notifications
 - 📝 customize columns with `hidden`, `width` and `grow` props
-- ⚡️ act on prs and issues with checkout, comment, open, merge, diff, etc...
+- ⚡️ act on prs, issues, and notifications with checkout, comment, open, merge, diff, mark as read/done, etc...
 - ⌨️ set custom actions with new keybindings
 - 💅 use custom themes
 - 🔭 view details about a pr/issue with a detailed sidebar
 - 🪟 write multiple configuration files to easily switch between completely different dashboards
 - ♻️ set an interval for auto refreshing the dashboard
 - 📁 smart filtering - auto-filter pr/issue lists to the remote tracked by the current directory
+- 🔔 manage GitHub notifications - view, filter, mark as read/done, and track notification activity
 
 ## 📦 Installation
 
