@@ -201,8 +201,6 @@ func (m *Model) SyncViewPortContent() {
 		headerColumns := m.renderHeaderColumns()
 		m.cacheColumnWidths()
 		
-		start := time.Now()
-		
 		// Split cached content into lines and update only the changed rows
 		lines := strings.Split(m.cachedContent, "\n")
 		if m.lastSelectedRow < len(lines) && currentSelectedRow < len(lines) {
@@ -231,28 +229,16 @@ func (m *Model) SyncViewPortContent() {
 	headerColumns := m.renderHeaderColumns()
 	m.cacheColumnWidths()
 	
-	start := time.Now()
 	renderedRows := make([]string, 0, totalRows)
 	for i := range m.Rows {
 		renderedRows = append(renderedRows, m.renderRow(i, headerColumns))
 	}
-	renderTime := time.Since(start)
-	
 	content := lipgloss.JoinVertical(lipgloss.Left, renderedRows...)
-	
-	syncStart := time.Now()
 	m.rowsViewport.SyncViewPort(content)
-	syncTime := time.Since(syncStart)
-	
 	// Cache the rendered content
 	m.cachedContent = content
 	m.cachedContentValid = true
 	m.lastSelectedRow = currentSelectedRow
-	
-	if totalRows > 100 {
-		_ = renderTime
-		_ = syncTime
-	}
 }
 
 func (m *Model) SetRows(rows []Row) {

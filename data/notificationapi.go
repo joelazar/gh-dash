@@ -11,19 +11,16 @@ import (
 )
 
 func GetNotifications(limit int, query ...string) ([]Notification, error) {
-	start := time.Now()
 	result, err := GetNotificationsPaginated(1, limit, query...)
 	return result, err
 }
 
 func GetNotificationsWithLimits(limit int, maxLimit int, maxAgeDays int, query ...string) ([]Notification, error) {
-	start := time.Now()
 	result, err := GetNotificationsPaginatedWithLimits(1, limit, maxLimit, maxAgeDays, query...)
 	return result, err
 }
 
 func GetNotificationsPaginated(page, perPage int, query ...string) ([]Notification, error) {
-	start := time.Now()
 
 	// Parse query to determine API parameters and client-side filters
 	queryStr := ""

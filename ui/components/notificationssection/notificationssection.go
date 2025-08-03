@@ -111,9 +111,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 
 	case NotificationsFetchedMsg:
 		if msg.SectionId == m.Id {
-			log.Debug("PERF: NotificationsFetchedMsg received - sectionId: %d, page: %d, isFirstPage: %v, notifications: %d", msg.SectionId, msg.Page, msg.IsFirstPage, len(msg.Notifications))
-			processStart := time.Now()
-			
 			if msg.IsFirstPage {
 					// Replace all notifications for first page
 				m.SetRows(msg.Notifications)
@@ -123,7 +120,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				m.Notifications = append(m.Notifications, msg.Notifications...)
 				m.CurrentPage = msg.Page
 				// Update table rows using the new component
-				rowStart := time.Now()
 				m.Table.SetRows(m.BuildRows())
 			}
 			// Calculate the limit used for this fetch to determine if there are more pages
