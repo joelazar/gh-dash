@@ -350,7 +350,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.BranchKeys.ViewPRs):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
-				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				m.tabs.UpdateSectionsConfigs(m.ctx)
 
 				currSections := m.getCurrentViewSections()
@@ -359,6 +358,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.setCurrentViewSections(newSections)
 					cmd = fetchSectionsCmds
 				}
+				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				m.onViewedRowChanged()
 
 			}
@@ -448,7 +448,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.PRKeys.ViewIssues):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
-				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				m.tabs.UpdateSectionsConfigs(m.ctx)
 
 				currSections := m.getCurrentViewSections()
@@ -457,6 +456,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.setCurrentViewSections(newSections)
 					cmd = fetchSectionsCmds
 				}
+				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				m.onViewedRowChanged()
 
 			case key.Matches(msg, keys.PRKeys.SummaryViewMore):
@@ -510,7 +510,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueKeys.ViewPRs):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
-				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				m.tabs.UpdateSectionsConfigs(m.ctx)
 
 				currSections := m.getCurrentViewSections()
@@ -519,6 +518,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.setCurrentViewSections(newSections)
 					cmd = fetchSectionsCmds
 				}
+				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				m.onViewedRowChanged()
 			}
 
@@ -538,7 +538,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.NotificationKeys.ViewSwitch):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
-				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				m.tabs.UpdateSectionsConfigs(m.ctx)
 
 				currSections := m.getCurrentViewSections()
@@ -547,6 +546,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.setCurrentViewSections(newSections)
 					cmd = fetchSectionsCmds
 				}
+				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				m.onViewedRowChanged()
 			}
 		}
@@ -557,12 +557,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ctx.Theme = theme.ParseTheme(m.ctx.Config)
 		m.ctx.Styles = context.InitStyles(m.ctx.Theme)
 		m.ctx.View = m.ctx.Config.Defaults.View
-		m.currSectionId = m.getCurrentViewDefaultSection()
 		m.sidebar.IsOpen = msg.Config.Defaults.Preview.Open
 		m.tabs.UpdateSectionsConfigs(m.ctx)
 		m.syncMainContentWidth()
 		newSections, fetchSectionsCmds := m.fetchAllViewSections()
 		m.setCurrentViewSections(newSections)
+		// Set currSectionId after sections are populated to avoid out of bounds access
+		defaultSection := m.getCurrentViewDefaultSection()
+		currSections := m.getCurrentViewSections()
+		if defaultSection >= len(currSections) && len(currSections) > 0 {
+			m.currSectionId = len(currSections) - 1
+		} else {
+			m.currSectionId = defaultSection
+		}
 		cmds = append(cmds, fetchSectionsCmds, fetchUser, m.doRefreshAtInterval(), m.doUpdateFooterAtInterval())
 
 	case intervalRefresh:
@@ -765,6 +772,13 @@ type initMsg struct {
 }
 
 func (m *Model) setCurrSectionId(newSectionId int) {
+	sections := m.getCurrentViewSections()
+	// Ensure the newSectionId is within valid bounds
+	if newSectionId < 0 {
+		newSectionId = 0
+	} else if newSectionId >= len(sections) && len(sections) > 0 {
+		newSectionId = len(sections) - 1
+	}
 	m.currSectionId = newSectionId
 	m.tabs.SetCurrSectionId(newSectionId)
 }

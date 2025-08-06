@@ -26,7 +26,7 @@ import (
 
 func (m *Model) getCurrSection() section.Section {
 	sections := m.getCurrentViewSections()
-	if len(sections) == 0 || m.currSectionId >= len(sections) {
+	if len(sections) == 0 || m.currSectionId < 0 || m.currSectionId >= len(sections) {
 		return nil
 	}
 	return sections[m.currSectionId]
@@ -42,7 +42,7 @@ func (m *Model) getCurrRowData() data.RowData {
 
 func (m *Model) getSectionAt(id int) section.Section {
 	sections := m.getCurrentViewSections()
-	if len(sections) <= id {
+	if id < 0 || id >= len(sections) {
 		return nil
 	}
 	return sections[id]
