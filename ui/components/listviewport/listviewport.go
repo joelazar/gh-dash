@@ -96,6 +96,40 @@ func (m *Model) GetCurrItem() int {
 	return m.currId
 }
 
+func (m *Model) SetCurrItem(item int) {
+	if item < 0 {
+		m.currId = 0
+	} else if item >= m.NumCurrentItems {
+		m.currId = m.NumCurrentItems - 1
+	} else {
+		m.currId = item
+	}
+
+	// Adjust viewport to keep current item visible
+	itemsPerPage := m.getNumPrsPerPage()
+	if m.currId < m.topBoundId {
+		// Item is above visible area, scroll up
+		m.topBoundId = m.currId
+		m.bottomBoundId = utils.Min(m.NumCurrentItems-1, m.topBoundId+itemsPerPage-1)
+		m.viewport.GotoTop()
+		// Scroll down to position correctly
+		scrollLines := m.currId * m.ListItemHeight
+		for i := 0; i < scrollLines; i += m.ListItemHeight {
+			m.viewport.LineDown(m.ListItemHeight)
+		}
+	} else if m.currId > m.bottomBoundId {
+		// Item is below visible area, scroll down
+		m.bottomBoundId = m.currId
+		m.topBoundId = utils.Max(0, m.bottomBoundId-itemsPerPage+1)
+		m.viewport.GotoTop()
+		// Scroll down to position correctly
+		scrollLines := m.topBoundId * m.ListItemHeight
+		for i := 0; i < scrollLines; i += m.ListItemHeight {
+			m.viewport.LineDown(m.ListItemHeight)
+		}
+	}
+}
+
 func (m *Model) GetVisibleBounds() (int, int) {
 	return m.topBoundId, m.bottomBoundId
 }

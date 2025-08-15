@@ -211,7 +211,19 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				}
 				if msg.IsDone != nil {
 					if *msg.IsDone {
+						currentItem := m.Table.GetCurrItem()
 						m.Notifications = append(m.Notifications[0:i], (m.Notifications[i+1 : len(m.Notifications)])...)
+
+						// Adjust focus position when removing an item
+						if len(m.Notifications) > 0 {
+							// If we removed the last item, move focus to previous item
+							if currentItem >= len(m.Notifications) {
+								m.Table.SetCurrItem(len(m.Notifications) - 1)
+							}
+						} else {
+							// No items left, reset to 0
+							m.Table.ResetCurrItem()
+						}
 					}
 				}
 				m.SetIsLoading(false)
