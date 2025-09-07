@@ -32,9 +32,6 @@ func (m *Model) openBrowser() tea.Cmd {
 		}
 		url := currRow.GetUrl()
 		err := b.Browse(url)
-		if err != nil {
-		} else {
-		}
 		return constants.TaskFinishedMsg{TaskId: taskId, Err: err}
 	}
 	return tea.Batch(startCmd, openCmd)

@@ -16,14 +16,14 @@ import (
 func (m *Model) checkout() (tea.Cmd, error) {
 	pr := m.GetCurrRow()
 	if pr == nil {
-		return nil, errors.New("No pr selected")
+		return nil, errors.New("no pr selected")
 	}
 
 	repoName := pr.GetRepoNameWithOwner()
 	repoPath, ok := common.GetRepoLocalPath(repoName, m.Ctx.Config.RepoPaths)
 
 	if !ok {
-		return nil, errors.New("Local path to repo not specified, set one in your config.yml under repoPaths")
+		return nil, errors.New("local path to repo not specified, set one in your config.yml under repoPaths")
 	}
 
 	prNumber := pr.GetNumber()

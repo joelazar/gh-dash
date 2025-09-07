@@ -56,7 +56,7 @@ func createModel(repoPath string, configPath string, debug bool) (ui.Model, *os.
 	if debug {
 		var fileErr error
 		newConfigFile, fileErr := os.OpenFile("debug.log",
-			os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+			os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o666)
 		if fileErr == nil {
 			log.SetOutput(newConfigFile)
 			log.SetTimeFormat(time.Kitchen)
@@ -162,7 +162,11 @@ func init() {
 
 		model, logger := createModel(repo, cfgFile, debug)
 		if logger != nil {
-			defer logger.Close()
+			defer func() {
+				if err := logger.Close(); err != nil {
+					log.Printf("Failed to close logger: %v", err)
+				}
+			}()
 		}
 
 		cpuprofile, err := rootCmd.Flags().GetString("cpuprofile")

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -460,7 +461,11 @@ func (parser ConfigParser) createConfigFileIfMissing(
 			return err
 		}
 
-		defer newConfigFile.Close()
+		defer func() {
+			if err := newConfigFile.Close(); err != nil {
+				log.Printf("Failed to close config file: %v", err)
+			}
+		}()
 		return parser.writeDefaultConfigContents(newConfigFile)
 	}
 

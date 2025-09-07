@@ -61,14 +61,14 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 	case tea.KeyMsg:
 
 		if m.IsSearchFocused() {
-			switch {
+			switch msg.Type {
 
-			case msg.Type == tea.KeyCtrlC, msg.Type == tea.KeyEsc:
+			case tea.KeyCtrlC, tea.KeyEsc:
 				m.SearchBar.SetValue(m.SearchValue)
 				blinkCmd := m.SetIsSearching(false)
 				return &m, blinkCmd
 
-			case msg.Type == tea.KeyEnter:
+			case tea.KeyEnter:
 				m.SearchValue = m.SearchBar.Value()
 				m.SetIsSearching(false)
 				m.ResetRows()
@@ -79,14 +79,14 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		}
 
 		if m.IsPromptConfirmationFocused() {
-			switch {
+			switch msg.Type {
 
-			case msg.Type == tea.KeyCtrlC, msg.Type == tea.KeyEsc:
+			case tea.KeyCtrlC, tea.KeyEsc:
 				m.PromptConfirmationBox.Reset()
 				cmd = m.SetIsPromptConfirmationShown(false)
 				return &m, cmd
 
-			case msg.Type == tea.KeyEnter:
+			case tea.KeyEnter:
 				input := m.PromptConfirmationBox.Value()
 				action := m.GetPromptConfirmationAction()
 				pr := m.GetCurrRow()

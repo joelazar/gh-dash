@@ -923,21 +923,22 @@ func (m *Model) fetchAllViewSections() ([]section.Section, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	cmds = append(cmds, m.tabs.SetAllLoading()...)
 
-	if m.ctx.View == config.RepoView {
+	switch m.ctx.View {
+	case config.RepoView:
 		var cmd tea.Cmd
 		s, cmd := reposection.FetchAllBranches(m.ctx)
 		cmds = append(cmds, cmd)
 		m.repo = &s
 		return nil, tea.Batch(cmds...)
-	} else if m.ctx.View == config.PRsView {
+	case config.PRsView:
 		s, prcmds := prssection.FetchAllSections(m.ctx, m.prs)
 		cmds = append(cmds, prcmds)
 		return s, tea.Batch(cmds...)
-	} else if m.ctx.View == config.IssuesView {
+	case config.IssuesView:
 		s, issuecmds := issuessection.FetchAllSections(m.ctx)
 		cmds = append(cmds, issuecmds)
 		return s, tea.Batch(cmds...)
-	} else {
+	default:
 		s, notificationcmds := notificationssection.FetchAllSections(m.ctx)
 		cmds = append(cmds, notificationcmds)
 		return s, tea.Batch(cmds...)
@@ -945,27 +946,29 @@ func (m *Model) fetchAllViewSections() ([]section.Section, tea.Cmd) {
 }
 
 func (m *Model) getCurrentViewSections() []section.Section {
-	if m.ctx.View == config.RepoView {
+	switch m.ctx.View {
+	case config.RepoView:
 		return []section.Section{m.repo}
-	} else if m.ctx.View == config.PRsView {
+	case config.PRsView:
 		return m.prs
-	} else if m.ctx.View == config.IssuesView {
+	case config.IssuesView:
 		return m.issues
-	} else {
+	default:
 		return m.notifications
 	}
 }
 
 func (m *Model) getCurrentViewDefaultSection() int {
-	if m.ctx.View == config.RepoView {
+	switch m.ctx.View {
+	case config.RepoView:
 		return 0
-	} else if m.ctx.View == config.PRsView {
+	case config.PRsView:
 		return 1
-	} else if m.ctx.View == config.IssuesView {
+	case config.IssuesView:
 		return 1
-	} else if m.ctx.View == config.NotificationsView {
+	case config.NotificationsView:
 		return 1
-	} else {
+	default:
 		return 1
 	}
 }
@@ -974,7 +977,8 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 	if newSections == nil {
 		return
 	}
-	if m.ctx.View == config.PRsView {
+	switch m.ctx.View {
+	case config.PRsView:
 		search := prssection.NewModel(
 			0,
 			m.ctx,
@@ -986,7 +990,7 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 			time.Now(),
 		)
 		m.prs = append([]section.Section{&search}, newSections...)
-	} else if m.ctx.View == config.IssuesView {
+	case config.IssuesView:
 		search := issuessection.NewModel(
 			0,
 			m.ctx,
@@ -998,7 +1002,7 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 			time.Now(),
 		)
 		m.issues = append([]section.Section{&search}, newSections...)
-	} else if m.ctx.View == config.NotificationsView {
+	case config.NotificationsView:
 		search := notificationssection.NewModel(
 			0,
 			m.ctx,

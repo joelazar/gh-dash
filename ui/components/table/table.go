@@ -170,24 +170,6 @@ func (m *Model) cacheColumnWidths() {
 	}
 }
 
-func (m *Model) createEmptyRow() string {
-	// Create an empty row with the same width as regular rows but minimal content
-	// This acts as a placeholder for virtual scrolling
-	var rowParts []string
-
-	for _, col := range m.getShownColumns() {
-		width := col.ComputedWidth
-		if width == 0 {
-			width = 10 // fallback width
-		}
-		// Create empty space with same width as actual content
-		emptyContent := strings.Repeat(" ", width)
-		rowParts = append(rowParts, emptyContent)
-	}
-
-	return lipgloss.JoinHorizontal(lipgloss.Left, rowParts...)
-}
-
 func (m *Model) SyncViewPortContent() {
 	totalRows := len(m.Rows)
 	if totalRows == 0 {
@@ -227,9 +209,7 @@ func (m *Model) SyncViewPortContent() {
 	}
 
 	// Full re-render needed (data changed or cache invalid)
-	if totalRows > 100 {
-		// reserved for future metrics
-	}
+	// TODO: Add metrics for large datasets when totalRows > 100
 
 	headerColumns := m.renderHeaderColumns()
 	m.cacheColumnWidths()

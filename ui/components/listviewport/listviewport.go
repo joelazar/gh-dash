@@ -115,7 +115,7 @@ func (m *Model) SetCurrItem(item int) {
 		// Scroll down to position correctly
 		scrollLines := m.currId * m.ListItemHeight
 		for i := 0; i < scrollLines; i += m.ListItemHeight {
-			m.viewport.LineDown(m.ListItemHeight)
+			m.viewport.ScrollDown(m.ListItemHeight)
 		}
 	} else if m.currId > m.bottomBoundId {
 		// Item is below visible area, scroll down
@@ -125,7 +125,7 @@ func (m *Model) SetCurrItem(item int) {
 		// Scroll down to position correctly
 		scrollLines := m.topBoundId * m.ListItemHeight
 		for i := 0; i < scrollLines; i += m.ListItemHeight {
-			m.viewport.LineDown(m.ListItemHeight)
+			m.viewport.ScrollDown(m.ListItemHeight)
 		}
 	}
 }
@@ -147,7 +147,7 @@ func (m *Model) NextItem() int {
 	if m.currId > m.bottomBoundId {
 		m.topBoundId += 1
 		m.bottomBoundId += 1
-		m.viewport.LineDown(m.ListItemHeight)
+		m.viewport.ScrollDown(m.ListItemHeight)
 	}
 
 	return m.currId
@@ -166,7 +166,7 @@ func (m *Model) PrevItem() int {
 	if m.currId < m.topBoundId {
 		m.topBoundId -= 1
 		m.bottomBoundId -= 1
-		m.viewport.LineUp(m.ListItemHeight)
+		m.viewport.ScrollUp(m.ListItemHeight)
 	}
 
 	return m.currId

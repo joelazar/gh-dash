@@ -72,13 +72,13 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.IsSearchFocused() {
-			switch {
-			case msg.Type == tea.KeyCtrlC, msg.Type == tea.KeyEsc:
+			switch msg.Type {
+			case tea.KeyCtrlC, tea.KeyEsc:
 				m.SearchBar.SetValue(m.SearchValue)
 				blinkCmd := m.SetIsSearching(false)
 				return &m, blinkCmd
 
-			case msg.Type == tea.KeyEnter:
+			case tea.KeyEnter:
 				newSearchValue := m.SearchBar.Value()
 				m.SearchValue = newSearchValue
 				m.SetIsSearching(false)
@@ -99,12 +99,12 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		}
 
 		if m.IsPromptConfirmationFocused() {
-			switch {
-			case msg.Type == tea.KeyCtrlC, msg.Type == tea.KeyEsc:
+			switch msg.Type {
+			case tea.KeyCtrlC, tea.KeyEsc:
 				m.SetIsPromptConfirmationShown(false)
 				return &m, nil
 
-			case msg.Type == tea.KeyEnter:
+			case tea.KeyEnter:
 				m.SetIsPromptConfirmationShown(false)
 				return &m, nil
 			}
