@@ -3,6 +3,7 @@ package section
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"strings"
 	"text/template"
 	"time"
@@ -10,7 +11,10 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/go-sprout/sprout"
+	timeregistry "github.com/go-sprout/sprout/registry/time"
 
 	"github.com/dlvhdr/gh-dash/v4/config"
 	"github.com/dlvhdr/gh-dash/v4/data"
@@ -81,6 +85,7 @@ func NewModel(
 	ctx *context.ProgramContext,
 	options NewSectionOptions,
 ) BaseModel {
+	filters := options.GetConfigFiltersWithCurrentRemoteAdded(ctx)
 	m := BaseModel{
 		Ctx:          ctx,
 		Id:           options.Id,
@@ -92,11 +97,11 @@ func NewModel(
 		PluralForm:   options.Plural,
 		SearchBar: search.NewModel(ctx, search.SearchOptions{
 			Prefix:       fmt.Sprintf("is:%s", options.Type),
-			InitialValue: options.GetConfigFiltersWithCurrentRemoteAdded(ctx),
+			InitialValue: filters,
 		}),
-		SearchValue:               options.GetConfigFiltersWithCurrentRemoteAdded(ctx),
+		SearchValue:               filters,
 		IsSearching:               false,
-		IsFilteredByCurrentRemote: options.GetConfigFiltersWithCurrentRemoteAdded(ctx) != options.Config.Filters,
+		IsFilteredByCurrentRemote: filters != options.Config.Filters,
 		TotalCount:                0,
 		PageInfo:                  nil,
 		PromptConfirmationBox:     prompt.NewModel(ctx),
@@ -212,11 +217,13 @@ func (m *BaseModel) GetSearchValue() string {
 	var searchValueWithoutCurrentCloneFilter []string
 	for _, token := range strings.Fields(searchValue) {
 		if !strings.HasPrefix(token, currentCloneFilter) {
-			searchValueWithoutCurrentCloneFilter = append(searchValueWithoutCurrentCloneFilter, token)
+			searchValueWithoutCurrentCloneFilter =
+				append(searchValueWithoutCurrentCloneFilter, token)
 		}
 	}
 	if m.IsFilteredByCurrentRemote {
-		return fmt.Sprintf("%s %s", currentCloneFilter, strings.Join(searchValueWithoutCurrentCloneFilter, " "))
+		return fmt.Sprintf("%s %s", currentCloneFilter,
+			strings.Join(searchValueWithoutCurrentCloneFilter, " "))
 	}
 	return strings.Join(searchValueWithoutCurrentCloneFilter, " ")
 }
@@ -226,9 +233,13 @@ func (m *BaseModel) enrichSearchWithTemplateVars() string {
 	searchVars := struct{ Now time.Time }{
 		Now: time.Now(),
 	}
-	handler := utils.TemplateHandler()
-	tmpl, err := template.New("search").Funcs(handler.Build()).Parse(searchValue)
+	sl := slog.New(log.Default())
+	handler := sprout.New(sprout.WithRegistries(timeregistry.NewRegistry(), utils.NewRegistry()), sprout.WithLogger(sl))
+	funcs := handler.Build()
+
+	tmpl, err := template.New("search").Funcs(funcs).Parse(searchValue)
 	if err != nil {
+		log.Error("bad template", "err", err)
 		return searchValue
 	}
 	var buf bytes.Buffer

@@ -1,0 +1,22 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: keybindings.notifications.yaml
+title: Notifications View Keybindings
+description: Keybindings for the Notifications view.
+type: array
+items:
+  type: object
+  properties:
+    key:
+      type: string
+      title: Keystroke
+    builtin:
+      type: string
+      enum: [markRead, markDone, viewSwitch]
+      title: Built-In Action
+    name:
+      type: string
+      title: Description
+    command:
+      type: string
+      title: Custom Command
+  additionalProperties: false

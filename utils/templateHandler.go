@@ -5,11 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/go-sprout/sprout"
-	timeregistry "github.com/go-sprout/sprout/registry/time"
 )
-
-var handler *sprout.DefaultHandler
 
 type TemplateRegistry struct {
 	handler sprout.Handler
@@ -32,6 +30,7 @@ func (or *TemplateRegistry) NowModify(input string) (string, error) {
 	now := time.Now()
 	duration, err := ParseDuration(input)
 	if err != nil {
+		log.Error("failed parsing duration", "input", input)
 		return "", err
 	}
 
@@ -45,16 +44,6 @@ func (or *TemplateRegistry) RegisterFunctions(funcsMap sprout.FunctionMap) error
 
 func (or *TemplateRegistry) RegisterAliases(aliasMap sprout.FunctionAliasMap) error {
 	return nil
-}
-
-func InitTemplateHandler() {
-	handler = sprout.New(sprout.WithRegistries(timeregistry.NewRegistry()))
-	tr := TemplateRegistry{handler: handler}
-	handler.AddRegistries(&tr)
-}
-
-func TemplateHandler() *sprout.DefaultHandler {
-	return handler
 }
 
 // ParseDuration parses a duration string.
