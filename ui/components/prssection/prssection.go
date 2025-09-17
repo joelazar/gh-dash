@@ -57,12 +57,10 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 	var err error
 
 	switch msg := msg.(type) {
-
 	case tea.KeyMsg:
 
 		if m.IsSearchFocused() {
 			switch msg.Type {
-
 			case tea.KeyCtrlC, tea.KeyEsc:
 				m.SearchBar.SetValue(m.SearchValue)
 				blinkCmd := m.SetIsSearching(false)
@@ -80,7 +78,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 
 		if m.IsPromptConfirmationFocused() {
 			switch msg.Type {
-
 			case tea.KeyCtrlC, tea.KeyEsc:
 				m.PromptConfirmationBox.Reset()
 				cmd = m.SetIsPromptConfirmationShown(false)
@@ -116,7 +113,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		}
 
 		switch {
-
 		case key.Matches(msg, keys.PRKeys.Diff):
 			cmd = m.diff()
 
@@ -141,7 +137,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 
 		case key.Matches(msg, keys.PRKeys.WatchChecks):
 			cmd = m.watchChecks()
-
 		}
 
 	case tasks.UpdatePRMsg:
@@ -190,7 +185,6 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 			m.Table.SetRows(m.BuildRows())
 			m.Table.UpdateLastUpdated(time.Now())
 			m.UpdateTotalItemsCount(m.TotalCount)
-
 		}
 	}
 

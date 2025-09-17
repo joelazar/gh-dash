@@ -325,7 +325,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case m.ctx.View == config.RepoView:
 			switch {
-
 			case key.Matches(msg, m.keys.OpenGithub):
 				cmds = append(cmds, m.repo.(*reposection.Model).OpenGithub())
 
@@ -363,11 +362,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				m.onViewedRowChanged()
-
 			}
 		case m.ctx.View == config.PRsView:
 			switch {
-
 			case key.Matches(msg, keys.PRKeys.PrevSidebarTab),
 				key.Matches(msg, keys.PRKeys.NextSidebarTab):
 				var scmd tea.Cmd
@@ -938,10 +935,12 @@ func (m *Model) fetchAllViewSections() ([]section.Section, tea.Cmd) {
 		s, issuecmds := issuessection.FetchAllSections(m.ctx)
 		cmds = append(cmds, issuecmds)
 		return s, tea.Batch(cmds...)
-	default:
+	case config.NotificationsView:
 		s, notificationcmds := notificationssection.FetchAllSections(m.ctx)
 		cmds = append(cmds, notificationcmds)
 		return s, tea.Batch(cmds...)
+	default:
+		return nil, nil
 	}
 }
 
@@ -953,8 +952,10 @@ func (m *Model) getCurrentViewSections() []section.Section {
 		return m.prs
 	case config.IssuesView:
 		return m.issues
-	default:
+	case config.NotificationsView:
 		return m.notifications
+	default:
+		return nil
 	}
 }
 
@@ -969,7 +970,7 @@ func (m *Model) getCurrentViewDefaultSection() int {
 	case config.NotificationsView:
 		return 1
 	default:
-		return 1
+		return 0
 	}
 }
 

@@ -1,4 +1,12 @@
-<p align="center"><a href="https://gh-dash.dev"><img src="./docs/public/logo.png" width="400" alt="gh dash logo - DASH Through Your GitHub" /></a></p>
+<br />
+<p align="center">
+  <a  class="underline: none;" href="https://gh-dash.dev">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="./docs/public/logo.png">
+      <img alt="Text changing depending on mode. Light: 'So light!' Dark: 'So dark!'" width="600" src="./docs/public/logo-light.png">
+    </picture>
+  </a>
+</p>
 
 <p align="center">
     <a href="https://gh-dash.dev" target="_blank">→ https://gh-dash.dev ←</a>
@@ -10,24 +18,24 @@
   <a href="https://github.com/dlvhdr/gh-dash/releases"><img src="https://img.shields.io/github/release/dlvhdr/gh-dash.svg" alt="Latest Release"></a>
   <a href="https://discord.gg/SXNXp9NctV"><img src="https://img.shields.io/discord/1413193703476035755?label=discord" alt="Discord"/></a>
   <a href="https://github.com/sponsors/dlvhdr"><img src=https://img.shields.io/github/sponsors/dlvhdr?logo=githubsponsors&color=EA4AAA /></a>
+  <a href="https://www.jetify.com/devbox/docs/contributor-quickstart/" alt="Built with Devbox"><img src="https://www.jetify.com/img/devbox/shield_galaxy.svg" /></a>
 </p>
 
 <br />
 
 <img src="./docs/src/assets/overview.gif" />
 
-<!-- <img src="https://user-images.githubusercontent.com/6196971/198704107-6775a0ba-669d-418b-9ae9-59228aaa84d1.gif" /> -->
-
 ## 📃 Docs
 
-> [!TIP]  
-> See the docs site at [https://gh-dash.dev](https://gh-dash.dev) to get started
+Installation instructions, configuration options etc. can be found at the docs
+site.
 
-## ❓ Why use gh-dash
+See the [Getting Started](https://gh-dash.dev/getting-started) guide.
 
-Check out this 10/10 video by [charm.sh ✨](https://charm.sh) explaining how gh-dash can help you manage your GitHub experience.
+## ❤️ Donating
 
-[![Manage open source like a boss (in the terminal)](./docs/src/assets/charm-vid-preview.jpg)](https://www.youtube.com/watch?v=5omFxcNjBQk&t "Manage open source like a boss (in the terminal)")
+If you enjoy dash and want to help, consider supporting the project with a
+donation at [dlvhdr's sponsors page](https://github.com/sponsors/dlvhdr).
 
 ## ✨ Features
 
@@ -130,6 +138,10 @@ Flags:
 ## ⚙️ Configuring
 
 See the docs at [https://gh-dash.dev/configuration](https://gh-dash.dev/configuration).
+
+## 🙏 Contributing
+
+See the contribution guide at [https://www.gh-dash.dev/contributing](https://www.gh-dash.dev/contributing/).
 
 ## 🛞 Under the hood
 

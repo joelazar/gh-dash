@@ -71,12 +71,10 @@ func (m *Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 	var err error
 
 	switch msg := msg.(type) {
-
 	case tea.KeyMsg:
 
 		if m.IsSearchFocused() {
 			switch msg.Type {
-
 			case tea.KeyCtrlC, tea.KeyEsc:
 				m.SearchBar.SetValue(m.SearchValue)
 				blinkCmd := m.SetIsSearching(false)
@@ -95,7 +93,6 @@ func (m *Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 
 		if m.IsPromptConfirmationFocused() {
 			switch msg.Type {
-
 			case tea.KeyCtrlC, tea.KeyEsc:
 				m.PromptConfirmationBox.Reset()
 				cmd = m.SetIsPromptConfirmationShown(false)
@@ -162,7 +159,6 @@ func (m *Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 			if err != nil {
 				m.Ctx.Error = err
 			}
-
 		}
 
 	case tasks.UpdateBranchMsg:
@@ -193,7 +189,6 @@ func (m *Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		if msg.id == m.refreshId {
 			cmds = append(cmds, m.onRefreshPrsMsg()...)
 		}
-
 	}
 
 	m.updateBranchesWithPrs()
