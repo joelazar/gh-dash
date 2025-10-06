@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://dlvhdr.github.io/gh-dash/configuration/gh-dash/schema.json
+# yaml-language-server: $schema=https://gh-dash.dev/schema.json
 prSections:
   - title: Mine
     filters: is:open author:@me repo:dlvhdr/gh-dash updated:>={{ nowModify "-3w" }} sort:updated-desc
@@ -19,9 +19,19 @@ prSections:
         hidden: true
 issuesSections:
   - title: Open
-    filters: author:@me repo:dlvhdr/gh-dash is:open -author:@me sort:reactions
-  - title: Creator
-    filters: author:@me repo:dlvhdr/gh-dash is:open
+    filters: repo:dlvhdr/gh-dash is:open sort:reactions
+  - title: Bugs
+    filters: repo:dlvhdr/gh-dash is:open sort:reactions label:bug
+  - title: Features
+    filters: repo:dlvhdr/gh-dash is:open sort:reactions label:feat
+  - title: High
+    filters: repo:dlvhdr/gh-dash is:open sort:reactions label:high-pri
+  - title: Mid
+    filters: repo:dlvhdr/gh-dash is:open sort:reactions label:mid-pri
+  - title: Low
+    filters: repo:dlvhdr/gh-dash is:open sort:reactions label:mid-pri
+  - title: Unlabeled
+    filters: repo:dlvhdr/gh-dash is:open sort:reactions -label:bug -label:feat
   - title: All
     filters: repo:dlvhdr/gh-dash sort:reactions
 
@@ -63,10 +73,11 @@ keybindings:
         nvim -c ":silent Octo pr edit {{.PrNumber}}"
         '
     - key: T
-      command: >
-        tmux new-window -c /Users/dlvhdr/code/personal/gh-enhance '
-        task local-gh -- -R {{.RepoName}} {{.PrNumber}}
+      command: >-
+        tmux new-window '
+          gh enhance -R {{.RepoName}} {{.PrNumber}}
         '
+
     # - key: b
     #   name: code review
     #   command: cd {{.RepoPath}} && gh pr view {{.PrNumber}} --json statusCheckRollup | command jq -rcj '.statusCheckRollup.[] | select(.context == "buildkite/mono") | .targetUrl' | xargs open

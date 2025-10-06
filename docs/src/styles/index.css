@@ -1,3 +1,5 @@
+@import "./custom.css";
+
 html:not([data-has-sidebar]) {
   --sl-content-width: 100%;
 }
@@ -69,20 +71,17 @@ footer {
   display: none;
 }
 
-@layer overrides {
+@layer my-overrides-index {
   html {
     --sl-content-width: 100%;
   }
 
-  th {
-    font-weight: normal;
+  site-search {
+    @apply hidden;
   }
 
-  @media (width <= 64rem) {
-    header {
-      padding-left: 8px;
-      padding-right: 8px;
-    }
+  th {
+    font-weight: normal;
   }
 
   @media (width <= 64rem) {

@@ -1,4 +1,4 @@
-@layer base, starlight, theme, components, utilities, my-overrides;
+@layer base, starlight, theme, components, utilities, my-overrides, my-overrides-index;
 
 @import "@astrojs/starlight-tailwind";
 @import "tailwindcss/theme.css" layer(theme);
@@ -37,7 +37,7 @@ h3 {
 
 :root {
   --sl-font: var(--font-family);
-  --sl-nav-height: 4rem;
+  --sl-nav-height: 74px;
   --sl-nav-pad-x: 16px;
   --sl-color-bg-nav: var(--sl-color-bg);
   --sl-color-bg-sidebar: var(--sl-color-bg);
@@ -60,6 +60,33 @@ h3 {
     to right in oklab,
     oklch(90% 0.5 200),
     oklch(80% 0.3 230)
+  );
+
+  --hdr-green-gradient: linear-gradient(
+    to right in oklab,
+    oklch(0.8512 0.1937 154.97) 37% 17%,
+    oklch(0.7115 0.131 174.2)
+  );
+
+  --hdr-red-gradient: linear-gradient(
+    to right in oklab,
+    oklch(91% 0.45 37),
+    oklch(95% 0.4 95)
+  );
+
+  --radial-silver-gradient: radial-gradient(
+    farthest-corner circle at 65% 37% in oklch,
+    oklch(95% 0.02 214) 11%,
+    12%,
+    oklch(39% 0 68) 55%,
+    57%,
+    oklch(41% 0.04 58)
+  );
+
+  --hdr-yellow-gradient: linear-gradient(
+    to right in oklab,
+    oklch(95% 0.4 95),
+    oklch(79% 0.45 64)
   );
 
   --sl-color-bg: #03030a;
@@ -252,32 +279,34 @@ kbd:not(.sl-hidden) {
 
   @media (width <= 64rem) {
     starlight-theme-select {
-      margin-right: 8px;
+      margin-right: 42px;
       & select {
         width: 8px;
-      }
-
-      & svg.icon.caret {
-        display: none;
+        padding-inline: 24px;
       }
     }
-  }
 
-  @media (width > 64rem) {
-    starlight-theme-select select {
-      width: 20px;
+    .mobile-preferences starlight-theme-select {
+      margin-right: 0;
+      & select {
+        width: calc(var(--sl-select-width) + var(--sl-inline-padding) * 2);
+        padding-inline: calc(
+            var(--sl-label-icon-size) + var(--sl-inline-padding) + 0.25rem
+          )
+          calc(var(--sl-caret-size) + var(--sl-inline-padding) + 0.25rem);
+      }
     }
   }
 
   header.header {
-    @apply mx-2 my-2 w-[calc(100vw_-_((100vw_-_100%)_+_16px))] max-w-[100vw] rounded border border-[var(--sl-color-gray-5)] p-0 lg:mx-6 lg:w-[calc(100vw_-_((100vw_-_100%)_+_48px))];
+    @apply !m-0 w-full rounded !p-0;
     box-shadow: 0px -8px 0px var(--sl-color-bg);
   }
 
   starlight-menu-button button {
-    top: 24px;
-    right: 12px;
-    background-color: var(--sl-color-gray-4);
+    top: 21px;
+    right: 16px;
+    background-color: var(--sl-color-gray-5);
     color: var(--sl-color-gray-1);
   }
 

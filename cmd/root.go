@@ -19,10 +19,10 @@ import (
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 
-	"github.com/dlvhdr/gh-dash/v4/config"
-	"github.com/dlvhdr/gh-dash/v4/git"
-	"github.com/dlvhdr/gh-dash/v4/ui"
-	"github.com/dlvhdr/gh-dash/v4/ui/markdown"
+	"github.com/dlvhdr/gh-dash/v4/internal/config"
+	"github.com/dlvhdr/gh-dash/v4/internal/git"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/markdown"
 )
 
 var (
@@ -33,7 +33,7 @@ var (
 )
 
 var (
-	cfgFile string
+	cfgFlag string
 
 	rootCmd = &cobra.Command{
 		Use:     "gh dash",
@@ -50,7 +50,7 @@ func Execute() {
 	}
 }
 
-func createModel(repoPath string, configPath string, debug bool) (ui.Model, *os.File) {
+func createModel(location config.Location, debug bool) (tui.Model, *os.File) {
 	var loggerFile *os.File
 
 	if debug {
@@ -63,8 +63,8 @@ func createModel(repoPath string, configPath string, debug bool) (ui.Model, *os.
 			log.SetReportCaller(true)
 			log.SetLevel(log.DebugLevel)
 			log.Debug("Logging to debug.log")
-			if repoPath != "" {
-				log.Debug("Running in repo", "repo", repoPath)
+			if location.RepoPath != "" {
+				log.Debug("Running in repo", "repo", location.RepoPath)
 			}
 		} else {
 			loggerFile, _ = tea.LogToFile("debug.log", "debug")
@@ -75,7 +75,7 @@ func createModel(repoPath string, configPath string, debug bool) (ui.Model, *os.
 		log.SetLevel(log.FatalLevel)
 	}
 
-	return ui.NewModel(repoPath, configPath), loggerFile
+	return tui.NewModel(location), loggerFile
 }
 
 func buildVersion(version, commit, date, builtBy string) string {
@@ -98,7 +98,7 @@ func buildVersion(version, commit, date, builtBy string) string {
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(
-		&cfgFile,
+		&cfgFlag,
 		"config",
 		"c",
 		"",
@@ -160,7 +160,7 @@ func init() {
 		lipgloss.SetHasDarkBackground(termenv.HasDarkBackground())
 		markdown.InitializeMarkdownStyle(termenv.HasDarkBackground())
 
-		model, logger := createModel(repo, cfgFile, debug)
+		model, logger := createModel(config.Location{RepoPath: repo, ConfigFlag: cfgFlag}, debug)
 		if logger != nil {
 			defer func() {
 				if err := logger.Close(); err != nil {
