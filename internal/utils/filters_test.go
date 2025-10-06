@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dlvhdr/gh-dash/v4/utils"
+	"github.com/dlvhdr/gh-dash/v4/internal/utils"
 )
 
 func TestNormalizeFilters(t *testing.T) {

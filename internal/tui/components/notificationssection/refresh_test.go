@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dlvhdr/gh-dash/v4/data"
-	"github.com/dlvhdr/gh-dash/v4/ui/components/notificationssection"
-	"github.com/dlvhdr/gh-dash/v4/ui/keys"
+	"github.com/dlvhdr/gh-dash/v4/internal/data"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notificationssection"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/keys"
 )
 
 func TestRefreshPreservesUserFilters(t *testing.T) {

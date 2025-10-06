@@ -4,11 +4,11 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/dlvhdr/gh-dash/v4/data"
-	"github.com/dlvhdr/gh-dash/v4/ui/components/section"
-	"github.com/dlvhdr/gh-dash/v4/ui/constants"
-	"github.com/dlvhdr/gh-dash/v4/ui/context"
-	"github.com/dlvhdr/gh-dash/v4/utils"
+	"github.com/dlvhdr/gh-dash/v4/internal/data"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/section"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/constants"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/context"
+	"github.com/dlvhdr/gh-dash/v4/internal/utils"
 )
 
 func FetchAllSections(ctx *context.ProgramContext) ([]section.Section, tea.Cmd) {

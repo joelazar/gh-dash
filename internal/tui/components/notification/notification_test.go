@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dlvhdr/gh-dash/v4/data"
-	"github.com/dlvhdr/gh-dash/v4/ui/context"
-	"github.com/dlvhdr/gh-dash/v4/ui/theme"
+	"github.com/dlvhdr/gh-dash/v4/internal/data"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/context"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/theme"
 )
 
 func TestNotificationUnreadStatusRendering(t *testing.T) {

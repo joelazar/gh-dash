@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dlvhdr/gh-dash/v4/ui/components/notificationssection"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notificationssection"
 )
 
 func TestInitialLoad(t *testing.T) {

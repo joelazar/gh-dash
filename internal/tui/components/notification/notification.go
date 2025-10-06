@@ -3,11 +3,11 @@ package notification
 import (
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/dlvhdr/gh-dash/v4/data"
-	"github.com/dlvhdr/gh-dash/v4/ui/components"
-	"github.com/dlvhdr/gh-dash/v4/ui/components/table"
-	"github.com/dlvhdr/gh-dash/v4/ui/context"
-	"github.com/dlvhdr/gh-dash/v4/utils"
+	"github.com/dlvhdr/gh-dash/v4/internal/data"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/table"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/context"
+	"github.com/dlvhdr/gh-dash/v4/internal/utils"
 )
 
 type Notification struct {

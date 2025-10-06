@@ -27,6 +27,8 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/footer"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/issuesidebar"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/issuessection"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notificationsidebar"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notificationssection"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prsidebar"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prssection"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/reposection"

@@ -5,10 +5,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
-	"github.com/dlvhdr/gh-dash/v4/data"
-	"github.com/dlvhdr/gh-dash/v4/ui/components/notificationssection"
-	"github.com/dlvhdr/gh-dash/v4/ui/constants"
-	"github.com/dlvhdr/gh-dash/v4/ui/context"
+	"github.com/dlvhdr/gh-dash/v4/internal/data"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notificationssection"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/constants"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/context"
 )
 
 // MarkAsDone marks the current notification as read
