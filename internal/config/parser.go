@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -556,7 +555,7 @@ func (parser ConfigParser) createConfigFileIfMissing(
 
 		defer func() {
 			if err := newConfigFile.Close(); err != nil {
-				log.Printf("Failed to close config file: %v", err)
+				log.Error("Failed to close config file", "err", err)
 			}
 		}()
 		return parser.writeDefaultConfigContents(newConfigFile)

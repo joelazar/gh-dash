@@ -9,6 +9,11 @@ prSections:
 issuesSections:
   - title: Open
     filters: author:@me -author:@me sort:reactions
+notificationsSections:
+  - title: Unread
+    filters: is:unread
+  - title: All
+    filters: ""
 repo:
   branchesRefetchIntervalSeconds: 30
   prsRefetchIntervalSeconds: 60
@@ -19,6 +24,9 @@ defaults:
     width: 80
   prsLimit: 100
   issuesLimit: 100
+  notificationsLimit: 50
+  notificationsMaxLimit: 200
+  notificationsMaxAgeDays: 30
   view: prs
   layout:
     prs:
@@ -55,6 +63,17 @@ defaults:
       assignees:
         width: 20
         hidden: true
+    notifications:
+      updatedAt:
+        width: 12
+      state:
+        width: 4
+      repo:
+        width: 30
+      reason:
+        width: 25
+      type:
+        width: 18
   refetchIntervalMinutes: 10
 keybindings:
   universal:
@@ -96,6 +115,8 @@ keybindings:
     - key: a
       command: >-
         gh issue open --repo {{.RepoName}} {{.PrNumber}}
+  branches: []
+  notifications: []
 repoPaths:
   dlvhdr/*: ~/code/personal/*
 theme:

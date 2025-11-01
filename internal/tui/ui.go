@@ -351,7 +351,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.BranchKeys.ViewPRs):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
-				m.tabs.UpdateSectionsConfigs(m.ctx)
 
 				currSections := m.getCurrentViewSections()
 				if len(currSections) == 0 {
@@ -448,7 +447,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.PRKeys.ViewIssues):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
-				m.tabs.UpdateSectionsConfigs(m.ctx)
 
 				currSections := m.getCurrentViewSections()
 				if len(currSections) == 0 {
@@ -518,7 +516,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueKeys.ViewPRs):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
-				m.tabs.UpdateSectionsConfigs(m.ctx)
 
 				currSections := m.getCurrentViewSections()
 				if len(currSections) == 0 {
@@ -546,7 +543,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.NotificationKeys.ViewSwitch):
 				m.ctx.View = m.switchSelectedView()
 				m.syncMainContentWidth()
-				m.tabs.UpdateSectionsConfigs(m.ctx)
 
 				currSections := m.getCurrentViewSections()
 				if len(currSections) == 0 {
@@ -566,7 +562,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ctx.Styles = context.InitStyles(m.ctx.Theme)
 		m.ctx.View = m.ctx.Config.Defaults.View
 		m.sidebar.IsOpen = msg.Config.Defaults.Preview.Open
-		m.tabs.UpdateSectionsConfigs(m.ctx)
 		m.syncMainContentWidth()
 
 		newSections, fetchSectionsCmds := m.fetchAllViewSections()
@@ -713,8 +708,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	m.tabs, tabsCmd = m.tabs.Update(msg)
-	m.tabs.UpdateSectionCounts(m.getCurrentViewSections())
+	tm, tabsCmd := m.tabs.Update(msg)
+	m.tabs = tm.(tabs.Model)
 
 	sectionCmd := m.updateCurrentSection(msg)
 	cmds = append(
@@ -738,7 +733,7 @@ func (m Model) View() string {
 
 	s := strings.Builder{}
 	if m.ctx.View != config.RepoView {
-		s.WriteString(m.tabs.View(m.ctx))
+		s.WriteString(m.tabs.View())
 	}
 	s.WriteString("\n")
 	content := "No sections defined"
