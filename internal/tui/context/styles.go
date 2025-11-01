@@ -68,10 +68,11 @@ type Styles struct {
 		RowStyle                 lipgloss.Style
 	}
 	Tabs struct {
-		Tab          lipgloss.Style
-		ActiveTab    lipgloss.Style
-		TabSeparator lipgloss.Style
-		TabsRow      lipgloss.Style
+		Tab               lipgloss.Style
+		ActiveTab         lipgloss.Style
+		OverflowIndicator lipgloss.Style
+		TabSeparator      lipgloss.Style
+		TabsRow           lipgloss.Style
 	}
 	ViewSwitcher struct {
 		ActiveView     lipgloss.Style
@@ -80,6 +81,10 @@ type Styles struct {
 		ViewsSeparator lipgloss.Style
 	}
 }
+
+const (
+	LogoColor = lipgloss.Color("#00F9FB")
+)
 
 func InitStyles(theme theme.Theme) Styles {
 	var s Styles
@@ -153,6 +158,7 @@ func InitStyles(theme theme.Theme) Styles {
 	s.PrSection.PrRepoCellWidth = 15
 	s.PrSection.PrAuthorCellWidth = 15
 
+	s.Sidebar.PagerHeight = 1
 	s.Sidebar.BorderWidth = 1
 	s.Sidebar.ContentPadding = 2
 	s.Sidebar.Root = lipgloss.NewStyle().
@@ -188,10 +194,7 @@ func InitStyles(theme theme.Theme) Styles {
 		Foreground(theme.PrimaryText)
 	s.Table.SingleRuneTitleCellStyle = s.Table.TitleCellStyle.
 		Width(common.SingleRuneWidth)
-	s.Table.HeaderStyle = lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(theme.FaintBorder).
-		BorderBottom(true)
+	s.Table.HeaderStyle = lipgloss.NewStyle()
 	s.Table.RowStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(theme.FaintBorder)
@@ -204,12 +207,11 @@ func InitStyles(theme theme.Theme) Styles {
 		Bold(true).
 		Background(theme.SelectedBackground).
 		Foreground(theme.PrimaryText)
+	s.Tabs.OverflowIndicator = s.Common.FaintTextStyle.Bold(true).Padding(0, 1)
 	s.Tabs.TabSeparator = lipgloss.NewStyle().
 		Foreground(theme.SecondaryBorder)
 	s.Tabs.TabsRow = lipgloss.NewStyle().
 		Height(common.TabsContentHeight).
-		PaddingTop(1).
-		PaddingBottom(0).
 		BorderBottom(true).
 		BorderStyle(lipgloss.ThickBorder()).
 		BorderBottomForeground(theme.PrimaryBorder)

@@ -136,6 +136,7 @@ type Section interface {
 	Table
 	Search
 	PromptConfirmation
+	GetConfig() config.SectionConfig
 	UpdateProgramContext(ctx *context.ProgramContext)
 	MakeSectionCmd(cmd tea.Cmd) tea.Cmd
 	GetPagerContent() string
@@ -188,9 +189,13 @@ type PromptConfirmation interface {
 
 func (m *BaseModel) GetDimensions() constants.Dimensions {
 	return constants.Dimensions{
-		Width:  m.Ctx.MainContentWidth - m.Ctx.Styles.Section.ContainerStyle.GetHorizontalPadding(),
-		Height: m.Ctx.MainContentHeight - common.SearchHeight,
+		Width:  max(0, m.Ctx.MainContentWidth-m.Ctx.Styles.Section.ContainerStyle.GetHorizontalPadding()),
+		Height: max(0, m.Ctx.MainContentHeight-common.SearchHeight),
 	}
+}
+
+func (m *BaseModel) GetConfig() config.SectionConfig {
+	return m.Config
 }
 
 func (m *BaseModel) HasRepoNameInConfiguredFilter() bool {
@@ -254,8 +259,8 @@ func (m *BaseModel) UpdateProgramContext(ctx *context.ProgramContext) {
 	m.Ctx = ctx
 	newDimensions := m.GetDimensions()
 	tableDimensions := constants.Dimensions{
-		Height: newDimensions.Height - 2,
-		Width:  newDimensions.Width,
+		Height: max(0, newDimensions.Height-2),
+		Width:  max(0, newDimensions.Width),
 	}
 	m.Table.SetDimensions(tableDimensions)
 	m.Table.UpdateProgramContext(ctx)

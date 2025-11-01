@@ -42,7 +42,7 @@ import (
 )
 
 type Model struct {
-	keys                *keys.KeyMap
+	keys                keys.KeyMap
 	sidebar             sidebar.Model
 	prSidebar           prsidebar.Model
 	issueSidebar        issuesidebar.Model
@@ -63,7 +63,7 @@ type Model struct {
 func NewModel(location config.Location) Model {
 	taskSpinner := spinner.Model{Spinner: spinner.Dot}
 	m := Model{
-		keys:        &keys.Keys,
+		keys:        keys.Keys,
 		sidebar:     sidebar.NewModel(),
 		taskSpinner: taskSpinner,
 		tasks:       map[string]context.Task{},

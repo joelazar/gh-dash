@@ -1,10 +1,11 @@
 debug.log
 dist
 gh-prs
-gh-dash
+/gh-dash
 .direnv/
 /result*
 .DS_Store
 .killgrave.log
 docs/broken-links.log
 .devbox
+__debug*

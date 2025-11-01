@@ -1,14 +1,5 @@
 ---
 title: How to Configure
-weight: 2
-summary: >-
-  Learn how to configure your terminal dashboard for GitHub with gh-dash.
-platen:
-  menu:
-    flatten_section: true
-cascade:
-  platen:
-    title_as_heading: false
 ---
 
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components";
@@ -87,12 +78,17 @@ Documentation and schema for the configuration of your GitHub dashboard.
   />
   <LinkCard
     title="Layout"
-    href="./layout"
+    href="./layout/options"
     description="Documentation for configuring your GitHub dashboard’s layout."
   />
   <LinkCard
     title="Theme"
     href="./theme"
     description="Documentation for configuring your GitHub dashboard’s theme."
+  />
+  <LinkCard
+    title="Reusing Settings"
+    href="./reusing.mdx"
+    description="Define global settings that will always be applied"
   />
 </CardGrid>
