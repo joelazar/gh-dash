@@ -34,6 +34,15 @@ h2 {
 h3 {
   font-size: var(--text-xl);
 }
+h4 {
+  font-size: var(--text-lg);
+}
+h5 {
+  font-size: var(--text-md);
+}
+h6 {
+  font-size: var(--text-sm);
+}
 
 :root {
   --sl-font: var(--font-family);
@@ -140,7 +149,7 @@ h3 {
 
 @layer base {
   :root {
-    --font-family: "CommitMono";
+    --font-family: "CommitMono", "MyFallbackFont", monospace;
     --font-size: 16px;
   }
 
@@ -163,7 +172,7 @@ h3 {
   --foreground2: var(--sl-color-gray-2);
 
   ul > li {
-    font-family: "CommitMono";
+    font-family: var(--font-family);
     --sl-sidebar-item-padding-inline: 0;
     color: var(--foreground2);
     text-decoration: none;
@@ -243,12 +252,12 @@ h3 {
 }
 
 code {
-  font-family: "CommitMono";
+  font-family: var(--font-family);
   color: var(--sl-color-accent);
 }
 
 pre {
-  font-family: "CommitMono";
+  font-family: var(--font-family);
   background: var(--background0);
 
   code span {
