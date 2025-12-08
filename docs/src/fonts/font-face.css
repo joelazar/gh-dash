@@ -1,10 +1,13 @@
 @font-face {
-  font-family: "Mona Sans";
-  src:
-    url("./Mona-Sans.woff2") format("woff2 supports variations"),
-    url("./Mona-Sans.woff2") format("woff2-variations");
-  font-weight: 200 900;
-  font-stretch: 75% 125%;
+  font-family: "MyFallbackFont";
+  /* Courier New closely matches CommitMono */
+  src: local("Courier New");
+
+  /* formula = 900 / 10 = 90% */
+  ascent-override: 90%;
+
+  /* formula = 200 / 10 = 20% */
+  descent-override: 20%;
 }
 
 @font-face {
@@ -12,4 +15,5 @@
   font-weight: normal;
   font-style: normal;
   src: url("./CommitMono-400-Regular.otf") format("opentype");
+  font-display: swap;
 }

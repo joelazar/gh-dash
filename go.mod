@@ -1,8 +1,6 @@
 module github.com/dlvhdr/gh-dash/v4
 
-go 1.24.2
-
-toolchain go1.24.7
+go 1.24.7
 
 require (
 	github.com/atotto/clipboard v0.1.4
@@ -15,6 +13,7 @@ require (
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20250916153604-9a2e892ed98e
 	github.com/cli/go-gh/v2 v2.12.1
 	github.com/cli/shurcooL-graphql v0.0.4
+	github.com/dlvhdr/x/gh-checks v0.3.0
 	github.com/gen2brain/beeep v0.11.1
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/go-sprout/sprout v1.0.1
@@ -22,9 +21,9 @@ require (
 	github.com/knadh/koanf/maps v0.1.2
 	github.com/knadh/koanf/parsers/yaml v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.0
-	github.com/knadh/koanf/providers/structs v1.0.0
 	github.com/knadh/koanf/v2 v2.3.0
 	github.com/lrstanley/bubblezone v1.0.0
+	github.com/maypok86/otter/v2 v2.2.1
 	github.com/muesli/termenv v0.16.0
 	github.com/shurcooL/githubv4 v0.0.0-20240727222349-48295856cce7
 	github.com/spf13/cobra v1.9.1
@@ -48,7 +47,6 @@ require (
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/esiqveland/notify v0.13.3 // indirect
-	github.com/fatih/structs v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
@@ -110,8 +108,8 @@ require (
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 )

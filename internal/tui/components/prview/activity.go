@@ -1,4 +1,4 @@
-package prsidebar
+package prview
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/dlvhdr/gh-dash/v4/internal/data"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/constants"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/markdown"
 	"github.com/dlvhdr/gh-dash/v4/internal/utils"
 )
@@ -21,11 +22,16 @@ type RenderedActivity struct {
 func (m *Model) renderActivity() string {
 	width := m.getIndentedContentWidth() - 2
 	markdownRenderer := markdown.GetMarkdownRenderer(width)
+	bodyStyle := lipgloss.NewStyle().PaddingLeft(2)
 
 	var activities []RenderedActivity
 	var comments []comment
 
-	for _, review := range m.pr.Data.ReviewThreads.Nodes {
+	if !m.pr.Data.IsEnriched {
+		return bodyStyle.Render("Loading...")
+	}
+
+	for _, review := range m.pr.Data.Enriched.ReviewThreads.Nodes {
 		path := review.Path
 		line := review.Line
 		for _, c := range review.Comments.Nodes {
@@ -39,7 +45,7 @@ func (m *Model) renderActivity() string {
 		}
 	}
 
-	for _, c := range m.pr.Data.Comments.Nodes {
+	for _, c := range m.pr.Data.Enriched.Comments.Nodes {
 		comments = append(comments, comment{
 			Author:    c.Author.Login,
 			Body:      c.Body,
@@ -58,7 +64,7 @@ func (m *Model) renderActivity() string {
 		})
 	}
 
-	for _, review := range m.pr.Data.Reviews.Nodes {
+	for _, review := range m.pr.Data.Primary.Reviews.Nodes {
 		renderedReview, err := m.renderReview(review, markdownRenderer)
 		if err != nil {
 			continue
@@ -74,7 +80,6 @@ func (m *Model) renderActivity() string {
 	})
 
 	body := ""
-	bodyStyle := lipgloss.NewStyle().PaddingLeft(2)
 	if len(activities) == 0 {
 		body = renderEmptyState()
 	} else {
@@ -82,7 +87,10 @@ func (m *Model) renderActivity() string {
 		for _, activity := range activities {
 			renderedActivities = append(renderedActivities, activity.RenderedString)
 		}
+		title := m.ctx.Styles.Common.MainTextStyle.MarginBottom(1).Underline(true).Render(
+			fmt.Sprintf("%s  %d comments", constants.CommentsIcon, len(activities)))
 		body = lipgloss.JoinVertical(lipgloss.Left, renderedActivities...)
+		body = lipgloss.JoinVertical(lipgloss.Left, title, body)
 	}
 
 	return bodyStyle.Render(body)
@@ -152,7 +160,8 @@ func (m *Model) renderReviewHeader(review data.Review) string {
 		" ",
 		m.ctx.Styles.Common.MainTextStyle.Render(review.Author.Login),
 		" ",
-		lipgloss.NewStyle().Foreground(m.ctx.Theme.FaintText).Render("reviewed "+utils.TimeElapsed(review.UpdatedAt)),
+		lipgloss.NewStyle().Foreground(m.ctx.Theme.FaintText).Render(
+			"reviewed "+utils.TimeElapsed(review.UpdatedAt)),
 	)
 }
 

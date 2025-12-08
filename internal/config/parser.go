@@ -155,6 +155,7 @@ type PrsLayoutConfig struct {
 	State        ColumnConfig `yaml:"state,omitempty"`
 	Ci           ColumnConfig `yaml:"ci,omitempty"`
 	Lines        ColumnConfig `yaml:"lines,omitempty"`
+	NumComments  ColumnConfig `yaml:"numComments,omitempty"`
 }
 
 type IssuesLayoutConfig struct {
@@ -627,7 +628,7 @@ func (parser ConfigParser) mergeConfigs(globalCfgPath, userProvidedCfgPath strin
 	if err := parser.loadGlobalConfig(globalCfgPath); err != nil {
 		return Config{}, parsingError{err: err, path: globalCfgPath}
 	}
-	log.Debug("Loaded global config", "path", globalCfgPath)
+	log.Info("Loaded global config", "path", globalCfgPath)
 	if err := parser.k.Load(file.Provider(userProvidedCfgPath), yaml.Parser(), koanf.WithMergeFunc(func(
 		overrides, dest map[string]any,
 	) error {
@@ -648,7 +649,7 @@ func (parser ConfigParser) mergeConfigs(globalCfgPath, userProvidedCfgPath strin
 	})); err != nil {
 		return Config{}, parsingError{err: err, path: userProvidedCfgPath}
 	}
-	log.Debug("Loaded user provided config", "path", userProvidedCfgPath)
+	log.Info("Loaded user provided config", "path", userProvidedCfgPath)
 
 	return parser.unmarshalConfigWithDefaults()
 }
@@ -743,7 +744,6 @@ type Location struct {
 }
 
 func ParseConfig(location Location) (Config, error) {
-	log.Debug("config.ParseConfig", "location", location)
 	parser := initParser()
 
 	var config Config

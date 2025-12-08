@@ -10,11 +10,21 @@ import (
 	"github.com/charmbracelet/log"
 	gh "github.com/cli/go-gh/v2/pkg/api"
 	graphql "github.com/cli/shurcooL-graphql"
+	checks "github.com/dlvhdr/x/gh-checks"
 	"github.com/shurcooL/githubv4"
 
 	"github.com/dlvhdr/gh-dash/v4/internal/config"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/theme"
 )
+
+type EnrichedPullRequestData struct {
+	Url           string
+	Number        int
+	Repository    Repository
+	Commits       CommitsWithStatusChecks   `graphql:"commits(last: 1)"`
+	Comments      CommentsWithBody          `graphql:"comments(last: 50, orderBy: { field: UPDATED_AT, direction: DESC })"`
+	ReviewThreads ReviewThreadsWithComments `graphql:"reviewThreads(last: 50)"`
+}
 
 type PullRequestData struct {
 	Number int
@@ -42,9 +52,9 @@ type PullRequestData struct {
 	}
 	Repository       Repository
 	Assignees        Assignees      `graphql:"assignees(first: 3)"`
-	Comments         Comments       `graphql:"comments(last: 5, orderBy: { field: UPDATED_AT, direction: DESC })"`
+	Comments         Comments       `graphql:"comments"`
+	ReviewThreads    ReviewThreads  `graphql:"reviewThreads"`
 	Reviews          Reviews        `graphql:"reviews(last: 3)"`
-	ReviewThreads    ReviewThreads  `graphql:"reviewThreads(last: 3)"`
 	ReviewRequests   ReviewRequests `graphql:"reviewRequests(last: 5)"`
 	Files            ChangedFiles   `graphql:"files(first: 5)"`
 	IsDraft          bool
@@ -56,7 +66,7 @@ type PullRequestData struct {
 type CheckRun struct {
 	Name       graphql.String
 	Status     graphql.String
-	Conclusion graphql.String
+	Conclusion checks.CheckRunState
 	CheckSuite struct {
 		Creator struct {
 			Login graphql.String
@@ -77,6 +87,42 @@ type StatusContext struct {
 	}
 }
 
+type CommitsWithStatusChecks struct {
+	Nodes []struct {
+		Commit struct {
+			Deployments struct {
+				Nodes []struct {
+					Task        graphql.String
+					Description graphql.String
+				}
+			} `graphql:"deployments(last: 10)"`
+			CommitUrl         graphql.String
+			StatusCheckRollup struct {
+				State    graphql.String
+				Contexts struct {
+					TotalCount graphql.Int
+					Nodes      []struct {
+						Typename      graphql.String `graphql:"__typename"`
+						CheckRun      CheckRun       `graphql:"... on CheckRun"`
+						StatusContext StatusContext  `graphql:"... on StatusContext"`
+					}
+				} `graphql:"contexts(last: 100)"`
+			}
+		}
+	}
+	TotalCount int
+}
+
+type CommentsWithBody struct {
+	TotalCount graphql.Int
+	Nodes      []Comment
+}
+
+type ContextCountByState = struct {
+	Count graphql.Int
+	State checks.CheckRunState
+}
+
 type Commits struct {
 	Nodes []struct {
 		Commit struct {
@@ -86,15 +132,15 @@ type Commits struct {
 					Description graphql.String
 				}
 			} `graphql:"deployments(last: 10)"`
+			CommitUrl         graphql.String
 			StatusCheckRollup struct {
+				State    graphql.String
 				Contexts struct {
-					TotalCount graphql.Int
-					Nodes      []struct {
-						Typename      graphql.String `graphql:"__typename"`
-						CheckRun      CheckRun       `graphql:"... on CheckRun"`
-						StatusContext StatusContext  `graphql:"... on StatusContext"`
-					}
-				} `graphql:"contexts(last: 20)"`
+					CheckRunCount              graphql.Int
+					CheckRunCountsByState      []ContextCountByState
+					StatusContextCount         graphql.Int
+					StatusContextCountsByState []ContextCountByState
+				} `graphql:"contexts(first: 1)"`
 			}
 		}
 	}
@@ -125,7 +171,10 @@ type ReviewComments struct {
 }
 
 type Comments struct {
-	Nodes      []Comment
+	TotalCount int
+}
+
+type ReviewThreads struct {
 	TotalCount int
 }
 
@@ -143,7 +192,7 @@ type Reviews struct {
 	Nodes      []Review
 }
 
-type ReviewThreads struct {
+type ReviewThreadsWithComments struct {
 	Nodes []struct {
 		Id           string
 		IsOutdated   bool
@@ -151,7 +200,7 @@ type ReviewThreads struct {
 		StartLine    int
 		Line         int
 		Path         string
-		Comments     ReviewComments `graphql:"comments(first: 10)"`
+		Comments     ReviewComments `graphql:"comments(first: 20)"`
 	}
 }
 
@@ -243,7 +292,7 @@ func FetchPullRequests(query string, limit int, pageInfo *PageInfo) (PullRequest
 	var err error
 	if client == nil {
 		if config.IsFeatureEnabled(config.FF_MOCK_DATA) {
-			log.Debug("using mock data", "server", "https://localhost:3000")
+			log.Info("using mock data", "server", "https://localhost:3000")
 			http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 			client, err = gh.NewGraphQLClient(gh.ClientOptions{Host: "localhost:3000", AuthToken: "fake-token"})
 		} else {
@@ -278,7 +327,7 @@ func FetchPullRequests(query string, limit int, pageInfo *PageInfo) (PullRequest
 	if err != nil {
 		return PullRequestsResponse{}, err
 	}
-	log.Debug("Successfully fetched PRs", "count", queryResult.Search.IssueCount)
+	log.Info("Successfully fetched PRs", "count", queryResult.Search.IssueCount)
 
 	prs := make([]PullRequestData, 0, len(queryResult.Search.Nodes))
 	for _, node := range queryResult.Search.Nodes {
@@ -295,31 +344,31 @@ func FetchPullRequests(query string, limit int, pageInfo *PageInfo) (PullRequest
 	}, nil
 }
 
-func FetchPullRequest(prUrl string) (PullRequestData, error) {
+func FetchPullRequest(prUrl string) (EnrichedPullRequestData, error) {
 	var err error
-	client, err := gh.DefaultGraphQLClient()
+	client, err := gh.NewGraphQLClient(gh.ClientOptions{EnableCache: true, CacheTTL: 5 * time.Minute})
 	if err != nil {
-		return PullRequestData{}, err
+		return EnrichedPullRequestData{}, err
 	}
 
 	var queryResult struct {
 		Resource struct {
-			PullRequest PullRequestData `graphql:"... on PullRequest"`
+			PullRequest EnrichedPullRequestData `graphql:"... on PullRequest"`
 		} `graphql:"resource(url: $url)"`
 	}
 	parsedUrl, err := url.Parse(prUrl)
 	if err != nil {
-		return PullRequestData{}, err
+		return EnrichedPullRequestData{}, err
 	}
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"url": githubv4.URI{URL: parsedUrl},
 	}
 	log.Debug("Fetching PR", "url", prUrl)
 	err = client.Query("FetchPullRequest", &queryResult, variables)
 	if err != nil {
-		return PullRequestData{}, err
+		return EnrichedPullRequestData{}, err
 	}
-	log.Debug("Successfully fetched PR", "url", prUrl)
+	log.Info("Successfully fetched PR", "url", prUrl)
 
 	return queryResult.Resource.PullRequest, nil
 }

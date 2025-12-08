@@ -1,12 +1,12 @@
-package pr
+package prrow
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	checks "github.com/dlvhdr/x/gh-checks"
 
-	"github.com/dlvhdr/gh-dash/v4/internal/data"
 	"github.com/dlvhdr/gh-dash/v4/internal/git"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/table"
@@ -17,7 +17,7 @@ import (
 
 type PullRequest struct {
 	Ctx            *context.ProgramContext
-	Data           *data.PullRequestData
+	Data           *Data
 	Branch         git.Branch
 	Columns        []table.Column
 	ShowAuthorIcon bool
@@ -27,26 +27,39 @@ func (pr *PullRequest) getTextStyle() lipgloss.Style {
 	return components.GetIssueTextStyle(pr.Ctx)
 }
 
+func (pr *PullRequest) renderNumComments() string {
+	if pr.Data.Primary == nil {
+		return "-"
+	}
+
+	numCommentsStyle := pr.Ctx.Styles.Common.FaintTextStyle
+	return numCommentsStyle.Render(
+		fmt.Sprintf(
+			"%d",
+			pr.Data.Primary.Comments.TotalCount+pr.Data.Primary.ReviewThreads.TotalCount,
+		))
+}
+
 func (pr *PullRequest) renderReviewStatus() string {
-	if pr.Data == nil {
+	if pr.Data.Primary == nil {
 		return "-"
 	}
 	reviewCellStyle := pr.getTextStyle()
-	if pr.Data.ReviewDecision == "APPROVED" {
+	if pr.Data.Primary.ReviewDecision == "APPROVED" {
 		reviewCellStyle = reviewCellStyle.Foreground(
 			pr.Ctx.Theme.SuccessText,
 		)
 		return reviewCellStyle.Render("󰄬")
 	}
 
-	if pr.Data.ReviewDecision == "CHANGES_REQUESTED" {
+	if pr.Data.Primary.ReviewDecision == "CHANGES_REQUESTED" {
 		reviewCellStyle = reviewCellStyle.Foreground(
 			pr.Ctx.Theme.ErrorText,
 		)
 		return reviewCellStyle.Render("")
 	}
 
-	if pr.Data.Reviews.TotalCount > 0 {
+	if pr.Data.Primary.Reviews.TotalCount > 0 {
 		return reviewCellStyle.Render(pr.Ctx.Styles.Common.CommentGlyph)
 	}
 
@@ -56,13 +69,13 @@ func (pr *PullRequest) renderReviewStatus() string {
 func (pr *PullRequest) renderState() string {
 	mergeCellStyle := lipgloss.NewStyle()
 
-	if pr.Data == nil {
+	if pr.Data.Primary == nil {
 		return mergeCellStyle.Foreground(pr.Ctx.Theme.SuccessText).Render("󰜛")
 	}
 
-	switch pr.Data.State {
+	switch pr.Data.Primary.State {
 	case "OPEN":
-		if pr.Data.IsDraft {
+		if pr.Data.Primary.IsDraft {
 			return mergeCellStyle.Foreground(pr.Ctx.Theme.FaintText).Render(constants.DraftIcon)
 		} else {
 			return mergeCellStyle.Foreground(pr.Ctx.Styles.Colors.OpenPR).Render(constants.OpenIcon)
@@ -78,71 +91,43 @@ func (pr *PullRequest) renderState() string {
 	}
 }
 
-func (pr *PullRequest) GetStatusChecksRollup() string {
-	if pr.Data.Mergeable == "CONFLICTING" {
-		return "FAILURE"
-	}
-
-	accStatus := "SUCCESS"
-	commits := pr.Data.Commits.Nodes
+func (pr *PullRequest) GetStatusChecksRollup() checks.CommitState {
+	commits := pr.Data.Primary.Commits.Nodes
 	if len(commits) == 0 {
-		return "PENDING"
+		return checks.CommitStateUnknown
 	}
 
-	mostRecentCommit := commits[0].Commit
-	for _, statusCheck := range mostRecentCommit.StatusCheckRollup.Contexts.Nodes {
-		var conclusion string
-		switch statusCheck.Typename {
-		case "CheckRun":
-			conclusion = string(statusCheck.CheckRun.Conclusion)
-			status := string(statusCheck.CheckRun.Status)
-			if isStatusWaiting(status) {
-				accStatus = "PENDING"
-			}
-		case "StatusContext":
-			conclusion = string(statusCheck.StatusContext.State)
-			if isStatusWaiting(conclusion) {
-				accStatus = "PENDING"
-			}
-		}
-
-		if isConclusionAFailure(conclusion) {
-			accStatus = "FAILURE"
-			break
-		}
-	}
-
-	return accStatus
+	return checks.CommitState(commits[0].Commit.StatusCheckRollup.State)
 }
 
 func (pr *PullRequest) renderCiStatus() string {
-	if pr.Data == nil {
+	if pr.Data.Primary == nil {
 		return "-"
 	}
 
 	accStatus := pr.GetStatusChecksRollup()
 	ciCellStyle := pr.getTextStyle()
-	if accStatus == "SUCCESS" {
+
+	switch accStatus {
+	case checks.CommitStateSuccess:
 		ciCellStyle = ciCellStyle.Foreground(pr.Ctx.Theme.SuccessText)
 		return ciCellStyle.Render(constants.SuccessIcon)
-	}
-
-	if accStatus == "PENDING" {
+	case checks.CommitStateExpected, checks.CommitStatePending:
 		return ciCellStyle.Render(pr.Ctx.Styles.Common.WaitingGlyph)
+	case checks.CommitStateError, checks.CommitStateFailure:
+		ciCellStyle = ciCellStyle.Foreground(pr.Ctx.Theme.ErrorText)
+		return ciCellStyle.Render(constants.FailureIcon)
+	default:
+		ciCellStyle = ciCellStyle.Foreground(pr.Ctx.Theme.FaintText)
+		return ciCellStyle.Render(constants.EmptyIcon)
 	}
-
-	ciCellStyle = ciCellStyle.Foreground(pr.Ctx.Theme.ErrorText)
-	return ciCellStyle.Render(constants.FailureIcon)
 }
 
 func (pr *PullRequest) RenderLines(isSelected bool) string {
-	if pr.Data == nil {
+	if pr.Data.Primary == nil {
 		return "-"
 	}
-	deletions := 0
-	if pr.Data.Deletions > 0 {
-		deletions = pr.Data.Deletions
-	}
+	deletions := max(pr.Data.Primary.Deletions, 0)
 
 	var additionsFg, deletionsFg lipgloss.AdaptiveColor
 	additionsFg = pr.Ctx.Theme.SuccessText
@@ -155,7 +140,7 @@ func (pr *PullRequest) RenderLines(isSelected bool) string {
 
 	additionsText := baseStyle.
 		Foreground(additionsFg).
-		Render(fmt.Sprintf("+%s", components.FormatNumber(pr.Data.Additions)))
+		Render(fmt.Sprintf("+%s", components.FormatNumber(pr.Data.Primary.Additions)))
 	deletionsText := baseStyle.
 		Foreground(deletionsFg).
 		Render(fmt.Sprintf("-%s", components.FormatNumber(deletions)))
@@ -185,9 +170,9 @@ func keepSameSpacesOnAddDeletions(str string) string {
 func (pr *PullRequest) renderTitle() string {
 	return components.RenderIssueTitle(
 		pr.Ctx,
-		pr.Data.State,
-		pr.Data.Title,
-		pr.Data.Number,
+		pr.Data.Primary.State,
+		pr.Data.Primary.Title,
+		pr.Data.Primary.Number,
 	)
 }
 
@@ -197,14 +182,16 @@ func (pr *PullRequest) renderExtendedTitle(isSelected bool) string {
 		baseStyle = baseStyle.Foreground(pr.Ctx.Theme.SecondaryText).Background(pr.Ctx.Theme.SelectedBackground)
 	}
 
-	author := baseStyle.Render(fmt.Sprintf("@%s", pr.Data.GetAuthor(pr.Ctx.Theme, pr.ShowAuthorIcon)))
-	top := lipgloss.JoinHorizontal(lipgloss.Top, pr.Data.Repository.NameWithOwner, fmt.Sprintf(" #%d by %s", pr.Data.Number, author))
+	author := baseStyle.Render(fmt.Sprintf("@%s",
+		pr.Data.Primary.GetAuthor(pr.Ctx.Theme, pr.ShowAuthorIcon)))
+	top := lipgloss.JoinHorizontal(lipgloss.Top, pr.Data.Primary.Repository.NameWithOwner,
+		fmt.Sprintf(" #%d by %s", pr.Data.Primary.Number, author))
 	branchHidden := pr.Ctx.Config.Defaults.Layout.Prs.Base.Hidden
 	if branchHidden == nil || !*branchHidden {
-		branch := baseStyle.Render(pr.Data.HeadRefName)
+		branch := baseStyle.Render(pr.Data.Primary.HeadRefName)
 		top = lipgloss.JoinHorizontal(lipgloss.Top, top, baseStyle.Render(" · "), branch)
 	}
-	title := pr.Data.Title
+	title := pr.Data.Primary.Title
 	var titleColumn table.Column
 	for _, column := range pr.Columns {
 		if column.Grow != nil && *column.Grow {
@@ -219,15 +206,15 @@ func (pr *PullRequest) renderExtendedTitle(isSelected bool) string {
 }
 
 func (pr *PullRequest) renderAuthor() string {
-	return pr.getTextStyle().Render(pr.Data.GetAuthor(pr.Ctx.Theme, pr.ShowAuthorIcon))
+	return pr.getTextStyle().Render(pr.Data.Primary.GetAuthor(pr.Ctx.Theme, pr.ShowAuthorIcon))
 }
 
 func (pr *PullRequest) renderAssignees() string {
-	if pr.Data == nil {
+	if pr.Data.Primary == nil {
 		return ""
 	}
-	assignees := make([]string, 0, len(pr.Data.Assignees.Nodes))
-	for _, assignee := range pr.Data.Assignees.Nodes {
+	assignees := make([]string, 0, len(pr.Data.Primary.Assignees.Nodes))
+	for _, assignee := range pr.Data.Primary.Assignees.Nodes {
 		assignees = append(assignees, assignee.Login)
 	}
 	return pr.getTextStyle().Render(strings.Join(assignees, ","))
@@ -236,9 +223,9 @@ func (pr *PullRequest) renderAssignees() string {
 func (pr *PullRequest) renderRepoName() string {
 	repoName := ""
 	if !pr.Ctx.Config.Theme.Ui.Table.Compact {
-		repoName = pr.Data.Repository.NameWithOwner
+		repoName = pr.Data.Primary.Repository.NameWithOwner
 	} else {
-		repoName = pr.Data.HeadRepository.Name
+		repoName = pr.Data.Primary.HeadRepository.Name
 	}
 	return pr.getTextStyle().Foreground(pr.Ctx.Theme.FaintText).Render(repoName)
 }
@@ -248,8 +235,8 @@ func (pr *PullRequest) renderUpdateAt() string {
 
 	updatedAtOutput := ""
 	t := pr.Branch.LastUpdatedAt
-	if pr.Data != nil {
-		t = &pr.Data.UpdatedAt
+	if pr.Data.Primary != nil {
+		t = &pr.Data.Primary.UpdatedAt
 	}
 
 	if t == nil {
@@ -270,8 +257,8 @@ func (pr *PullRequest) renderCreatedAt() string {
 
 	createdAtOutput := ""
 	t := pr.Branch.CreatedAt
-	if pr.Data != nil {
-		t = &pr.Data.CreatedAt
+	if pr.Data.Primary != nil {
+		t = &pr.Data.Primary.CreatedAt
 	}
 
 	if t == nil {
@@ -288,16 +275,16 @@ func (pr *PullRequest) renderCreatedAt() string {
 }
 
 func (pr *PullRequest) renderBaseName() string {
-	if pr.Data == nil {
+	if pr.Data.Primary == nil {
 		return ""
 	}
-	return pr.getTextStyle().Render(pr.Data.BaseRefName)
+	return pr.getTextStyle().Render(pr.Data.Primary.BaseRefName)
 }
 
 func (pr *PullRequest) RenderState() string {
-	switch pr.Data.State {
+	switch pr.Data.Primary.State {
 	case "OPEN":
-		if pr.Data.IsDraft {
+		if pr.Data.Primary.IsDraft {
 			return constants.DraftIcon + " Draft"
 		} else {
 			return constants.OpenIcon + " Open"
@@ -312,7 +299,7 @@ func (pr *PullRequest) RenderState() string {
 }
 
 func (pr *PullRequest) RenderMergeStateStatus() string {
-	switch pr.Data.MergeStateStatus {
+	switch pr.Data.Primary.MergeStateStatus {
 	case "CLEAN":
 		return constants.SuccessIcon + " Up-to-date"
 	case "BLOCKED":
@@ -331,6 +318,7 @@ func (pr *PullRequest) ToTableRow(isSelected bool) table.Row {
 			pr.renderExtendedTitle(isSelected),
 			pr.renderAssignees(),
 			pr.renderBaseName(),
+			pr.renderNumComments(),
 			pr.renderReviewStatus(),
 			pr.renderCiStatus(),
 			pr.RenderLines(isSelected),
@@ -352,16 +340,4 @@ func (pr *PullRequest) ToTableRow(isSelected bool) table.Row {
 		pr.renderUpdateAt(),
 		pr.renderCreatedAt(),
 	}
-}
-
-func isConclusionAFailure(conclusion string) bool {
-	return conclusion == "FAILURE" || conclusion == "TIMED_OUT" ||
-		conclusion == "STARTUP_FAILURE"
-}
-
-func isStatusWaiting(status string) bool {
-	return status == "PENDING" ||
-		status == "QUEUED" ||
-		status == "IN_PROGRESS" ||
-		status == "WAITING"
 }

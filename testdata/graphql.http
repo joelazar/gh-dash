@@ -1,0 +1,18 @@
+###
+# @env-stdin-cmd GH_TOKEN gh auth token
+
+GRAPHQL https://api.github.com/graphql HTTP/1.1
+Accept: application/json
+Authorization: Bearer {{GH_TOKEN}}
+
+query PullRequestChecks($url: URI!){
+  resource(url: $url) {
+    ... on PullRequest {
+      reviewThreads {
+        totalCount
+      }
+    }
+  }
+}
+
+{ "url": "https://github.com/charmbracelet/bubbletea/pull/1190" }

@@ -25,12 +25,13 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/branch"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/branchsidebar"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/footer"
-	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/issuesidebar"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/issuessection"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/issueview"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notificationsidebar"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notificationssection"
-	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prsidebar"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prrow"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prssection"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prview"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/reposection"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/section"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/sidebar"
@@ -42,10 +43,10 @@ import (
 )
 
 type Model struct {
-	keys                keys.KeyMap
+	keys                *keys.KeyMap
 	sidebar             sidebar.Model
-	prSidebar           prsidebar.Model
-	issueSidebar        issuesidebar.Model
+	prView              prview.Model
+	issueView           issueview.Model
 	branchSidebar       branchsidebar.Model
 	notificationSidebar notificationsidebar.Model
 	currSectionId       int
@@ -59,7 +60,6 @@ type Model struct {
 	taskSpinner         spinner.Model
 	tasks               map[string]context.Task
 }
-
 func NewModel(location config.Location) Model {
 	taskSpinner := spinner.Model{Spinner: spinner.Dot}
 	m := Model{
@@ -79,7 +79,7 @@ func NewModel(location config.Location) Model {
 		ConfigFlag: location.ConfigFlag,
 		Version:    version,
 		StartTask: func(task context.Task) tea.Cmd {
-			log.Debug("Starting task", "id", task.Id)
+			log.Info("Starting task", "id", task.Id)
 			task.StartTime = time.Now()
 			m.tasks[task.Id] = task
 			rTask := m.renderRunningTask()
@@ -92,15 +92,16 @@ func NewModel(location config.Location) Model {
 		Background(m.ctx.Theme.SelectedBackground)
 
 	m.footer = footer.NewModel(m.ctx)
-	m.prSidebar = prsidebar.NewModel(m.ctx)
-	m.issueSidebar = issuesidebar.NewModel(m.ctx)
+
+	m.footer = footer.NewModel(m.ctx)
+	m.prView = prview.NewModel(m.ctx)
+	m.issueView = issueview.NewModel(m.ctx)
 	m.branchSidebar = branchsidebar.NewModel(m.ctx)
 	m.notificationSidebar = notificationsidebar.NewModel(m.ctx)
 	m.tabs = tabs.NewModel(m.ctx)
 
 	return m
 }
-
 func (m *Model) initScreen() tea.Msg {
 	showError := func(err error) {
 		styles := log.DefaultStyles()
@@ -165,8 +166,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd             tea.Cmd
 		tabsCmd         tea.Cmd
 		sidebarCmd      tea.Cmd
-		prSidebarCmd    tea.Cmd
-		issueSidebarCmd tea.Cmd
+		prViewCmd       tea.Cmd
+		issueViewCmd tea.Cmd
 		footerCmd       tea.Cmd
 		cmds            []tea.Cmd
 		currSection     = m.getCurrSection()
@@ -175,7 +176,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		log.Debug("Key pressed", "key", msg.String())
+		log.Info("Key pressed", "key", msg.String())
 		m.ctx.Error = nil
 
 		if currSection != nil && (currSection.IsSearchFocused() ||
@@ -184,16 +185,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
-		if m.prSidebar.IsTextInputBoxFocused() {
-			m.prSidebar, cmd = m.prSidebar.Update(msg)
+		if m.prView.IsTextInputBoxFocused() {
+			m.prView, cmd = m.prView.Update(msg)
 			m.syncSidebar()
 			return m, cmd
 		}
 
-		if m.issueSidebar.IsTextInputBoxFocused() {
-			m.issueSidebar, cmd = m.issueSidebar.Update(msg)
+		if m.issueView.IsTextInputBoxFocused() {
+			m.issueView, cmd = m.issueView.Update(msg)
 			m.syncSidebar()
 			return m, cmd
+		}
+
+		if m.footer.ShowConfirmQuit && (msg.String() == "y" || msg.String() == "enter") {
+			return m, tea.Quit
+		} else if m.footer.ShowConfirmQuit {
+			m.footer.SetShowConfirmQuit(false)
+			return m, nil
 		}
 
 		switch {
@@ -205,7 +213,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			prevSection := m.getSectionAt(m.getPrevSectionId())
 			if prevSection != nil {
 				m.setCurrSectionId(prevSection.GetId())
-				m.onViewedRowChanged()
+				cmd = m.onViewedRowChanged()
 			}
 
 		case key.Matches(msg, m.keys.NextSection):
@@ -213,7 +221,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			nextSection := m.getSectionAt(nextSectionId)
 			if nextSection != nil {
 				m.setCurrSectionId(nextSection.GetId())
-				m.onViewedRowChanged()
+				cmd = m.onViewedRowChanged()
 			}
 
 		case key.Matches(msg, m.keys.Down):
@@ -227,11 +235,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.Up):
+
+		case key.Matches(msg, m.keys.Up):
 			if currSection != nil {
 				currSection.PrevRow()
-				m.onViewedRowChanged()
+				cmd = m.onViewedRowChanged()
 			}
-
 		case key.Matches(msg, m.keys.FirstLine):
 			if currSection != nil {
 				currSection.FirstItem()
@@ -284,6 +293,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ctx.MainContentHeight = m.ctx.MainContentHeight +
 					common.ExpandedHelpHeight - common.FooterHeight
 			}
+			m.footer.ShowAll = !m.footer.ShowAll
 
 		case key.Matches(msg, m.keys.CopyNumber):
 			var cmd tea.Cmd
@@ -316,11 +326,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 
 		case key.Matches(msg, m.keys.Quit):
-			if m.ctx.Config.ConfirmQuit {
-				m.footer, cmd = m.footer.Update(msg)
-				return m, cmd
+			if !m.ctx.Config.ConfirmQuit {
+				return m, tea.Quit
 			}
-			cmd = tea.Quit
+
+			m.footer.SetShowConfirmQuit(true)
 
 		case m.ctx.View == config.RepoView:
 			switch {
@@ -359,51 +369,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmd = fetchSectionsCmds
 				}
 				m.setCurrSectionId(m.getCurrentViewDefaultSection())
-				m.onViewedRowChanged()
+				cmds = append(cmds, m.onViewedRowChanged())
 			}
 		case m.ctx.View == config.PRsView:
 			switch {
+			switch {
 			case key.Matches(msg, keys.PRKeys.PrevSidebarTab),
 				key.Matches(msg, keys.PRKeys.NextSidebarTab):
+				var scmds []tea.Cmd
 				var scmd tea.Cmd
-				m.prSidebar, scmd = m.prSidebar.Update(msg)
+				m.prView, scmd = m.prView.Update(msg)
+				scmds = append(scmds, scmd)
 				m.syncSidebar()
-				return m, scmd
+				return m, tea.Batch(scmds...)
 
 			case key.Matches(msg, m.keys.OpenGithub):
 				cmds = append(cmds, m.openBrowser())
 
 			case key.Matches(msg, keys.PRKeys.Approve):
-				m.prSidebar.GoToFirstTab()
+				m.prView.GoToFirstTab()
 				m.sidebar.IsOpen = true
-				cmd = m.prSidebar.SetIsApproving(true)
+				cmd = m.prView.SetIsApproving(true)
 				m.syncMainContentWidth()
 				m.syncSidebar()
 				m.sidebar.ScrollToBottom()
 				return m, cmd
 
 			case key.Matches(msg, keys.PRKeys.Assign):
-				m.prSidebar.GoToFirstTab()
+				m.prView.GoToFirstTab()
 				m.sidebar.IsOpen = true
-				cmd = m.prSidebar.SetIsAssigning(true)
+				cmd = m.prView.SetIsAssigning(true)
 				m.syncMainContentWidth()
 				m.syncSidebar()
 				m.sidebar.ScrollToBottom()
 				return m, cmd
 
 			case key.Matches(msg, keys.PRKeys.Unassign):
-				m.prSidebar.GoToFirstTab()
+				m.prView.GoToFirstTab()
 				m.sidebar.IsOpen = true
-				cmd = m.prSidebar.SetIsUnassigning(true)
+				cmd = m.prView.SetIsUnassigning(true)
 				m.syncMainContentWidth()
 				m.syncSidebar()
 				m.sidebar.ScrollToBottom()
 				return m, cmd
 
 			case key.Matches(msg, keys.PRKeys.Comment):
-				m.prSidebar.GoToFirstTab()
+				m.prView.GoToFirstTab()
 				m.sidebar.IsOpen = true
-				cmd = m.prSidebar.SetIsCommenting(true)
+				cmd = m.prView.SetIsCommenting(true)
 				m.syncMainContentWidth()
 				m.syncSidebar()
 				m.sidebar.ScrollToBottom()
@@ -455,21 +468,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmd = fetchSectionsCmds
 				}
 				m.setCurrSectionId(m.getCurrentViewDefaultSection())
-				m.onViewedRowChanged()
+				cmds = append(cmds, m.onViewedRowChanged())
 
 			case key.Matches(msg, keys.PRKeys.SummaryViewMore):
-				m.prSidebar.SetSummaryViewMore()
+				m.prView.SetSummaryViewMore()
 				m.syncSidebar()
 				return m, nil
 			}
 		case m.ctx.View == config.IssuesView:
+			switch {
 			switch {
 			case key.Matches(msg, m.keys.OpenGithub):
 				cmds = append(cmds, m.openBrowser())
 
 			case key.Matches(msg, keys.IssueKeys.Label):
 				m.sidebar.IsOpen = true
-				cmd = m.issueSidebar.SetIsLabeling(true)
+				cmd = m.issueView.SetIsLabeling(true)
 				m.syncMainContentWidth()
 				m.syncSidebar()
 				m.sidebar.ScrollToBottom()
@@ -477,7 +491,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case key.Matches(msg, keys.IssueKeys.Assign):
 				m.sidebar.IsOpen = true
-				cmd = m.issueSidebar.SetIsAssigning(true)
+				cmd = m.issueView.SetIsAssigning(true)
 				m.syncMainContentWidth()
 				m.syncSidebar()
 				m.sidebar.ScrollToBottom()
@@ -485,7 +499,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case key.Matches(msg, keys.IssueKeys.Unassign):
 				m.sidebar.IsOpen = true
-				cmd = m.issueSidebar.SetIsUnassigning(true)
+				cmd = m.issueView.SetIsUnassigning(true)
 				m.syncMainContentWidth()
 				m.syncSidebar()
 				m.sidebar.ScrollToBottom()
@@ -493,7 +507,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case key.Matches(msg, keys.IssueKeys.Comment):
 				m.sidebar.IsOpen = true
-				cmd = m.issueSidebar.SetIsCommenting(true)
+				cmd = m.issueView.SetIsCommenting(true)
 				m.syncMainContentWidth()
 				m.syncSidebar()
 				m.sidebar.ScrollToBottom()
@@ -524,7 +538,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmd = fetchSectionsCmds
 				}
 				m.setCurrSectionId(m.getCurrentViewDefaultSection())
-				m.onViewedRowChanged()
+				cmds = append(cmds, m.onViewedRowChanged())
 			}
 
 		case m.ctx.View == config.NotificationsView:
@@ -551,10 +565,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmd = fetchSectionsCmds
 				}
 				m.setCurrSectionId(m.getCurrentViewDefaultSection())
-				m.onViewedRowChanged()
+				cmds = append(cmds, m.onViewedRowChanged())
 			}
 		}
-
 	case initMsg:
 		m.ctx.Config = &msg.Config
 		m.ctx.RepoUrl = msg.RepoUrl
@@ -593,7 +606,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		task, ok := m.tasks[msg.TaskId]
 		if ok {
-			log.Debug("Task finished", "id", task.Id)
+			log.Info("Task finished", "id", task.Id)
 			if msg.Err != nil {
 				log.Error("Task finished with error", "id", task.Id, "err", msg.Err)
 				task.State = context.TaskError
@@ -627,6 +640,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.onViewedRowChanged()
 		}
 
+	case prview.EnrichedPrMsg:
+		if msg.Err == nil {
+			m.prView.SetEnrichedPR(msg.Data)
+			m.prs[msg.Id].(*prssection.Model).EnrichPR(msg.Data)
+			syncCmd := m.syncSidebar()
+			cmds = append(cmds, syncCmd)
+		} else {
+			log.Error("failed enriching pr", "err", msg.Err)
+		}
+
 	case spinner.TickMsg:
 		if len(m.tasks) > 0 {
 			taskSpinner, internalTickCmd := m.taskSpinner.Update(msg)
@@ -644,7 +667,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.updateRelevantSection(msg)
 
 		if msg.Id == m.currSectionId {
-			m.onViewedRowChanged()
+			cmds = append(cmds, m.onViewedRowChanged())
 		}
 
 	case execProcessFinishedMsg, tea.FocusMsg:
@@ -657,6 +680,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if zone.Get("donate").InBounds(msg) {
+		if zone.Get("donate").InBounds(msg) {
+			log.Info("Donate clicked", "msg", msg)
 			openCmd := func() tea.Msg {
 				b := browser.New("", os.Stdout, os.Stdin)
 				err := b.Browse("https://github.com/sponsors/dlvhdr")
@@ -667,12 +692,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			cmds = append(cmds, openCmd)
 		}
-
 	case tea.WindowSizeMsg:
 		m.onWindowSizeChanged(msg)
 
 	case updateFooterMsg:
-		m.footer, cmd = m.footer.Update(msg)
 		cmds = append(cmds, cmd, m.doUpdateFooterAtInterval())
 
 	case constants.ErrMsg:
@@ -687,17 +710,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.sidebar, sidebarCmd = m.sidebar.Update(msg)
 
-	if m.prSidebar.IsTextInputBoxFocused() {
-		m.prSidebar, prSidebarCmd = m.prSidebar.Update(msg)
+	if m.prView.IsTextInputBoxFocused() {
+		m.prView, prViewCmd = m.prView.Update(msg)
 		m.syncSidebar()
 	}
 
-	if m.issueSidebar.IsTextInputBoxFocused() {
-		m.issueSidebar, issueSidebarCmd = m.issueSidebar.Update(msg)
+	if m.issueView.IsTextInputBoxFocused() {
+		m.issueView, issueViewCmd = m.issueView.Update(msg)
 		m.syncSidebar()
 	}
 
-	m.footer, footerCmd = m.footer.Update(msg)
 	if currSection != nil {
 		if currSection.IsPromptConfirmationFocused() {
 			m.footer.SetLeftSection(currSection.GetPromptConfirmation())
@@ -719,8 +741,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sidebarCmd,
 		footerCmd,
 		sectionCmd,
-		prSidebarCmd,
-		issueSidebarCmd,
+		prViewCmd,
+		issueViewCmd,
 	)
 
 	return m, tea.Batch(cmds...)
@@ -788,14 +810,18 @@ func (m *Model) setCurrSectionId(newSectionId int) {
 }
 
 func (m *Model) onViewedRowChanged() tea.Cmd {
-	m.prSidebar.SetSummaryViewLess()
-	m.prSidebar.GoToFirstTab()
-	cmd := m.syncSidebar()
+	m.prView.SetSummaryViewLess()
+	m.prView.GoToFirstTab()
+	m.syncSidebar()
+	cmd := m.prView.EnrichCurrRow()
 	m.sidebar.ScrollToTop()
 	return cmd
 }
 
 func (m *Model) onWindowSizeChanged(msg tea.WindowSizeMsg) {
+
+func (m *Model) onWindowSizeChanged(msg tea.WindowSizeMsg) {
+	log.Info("window size changed", "width", msg.Width, "height", msg.Height)
 	m.footer.SetWidth(msg.Width)
 	m.ctx.ScreenWidth = msg.Width
 	m.ctx.ScreenHeight = msg.Height
@@ -813,8 +839,8 @@ func (m *Model) syncProgramContext() {
 	}
 	m.footer.UpdateProgramContext(m.ctx)
 	m.sidebar.UpdateProgramContext(m.ctx)
-	m.prSidebar.UpdateProgramContext(m.ctx)
-	m.issueSidebar.UpdateProgramContext(m.ctx)
+	m.prView.UpdateProgramContext(m.ctx)
+	m.issueView.UpdateProgramContext(m.ctx)
 	m.branchSidebar.UpdateProgramContext(m.ctx)
 }
 
@@ -860,6 +886,13 @@ func (m *Model) updateSection(id int, sType string, msg tea.Msg) (cmd tea.Cmd) {
 		log.Debug("updateSection: unknown section type", "sType", sType)
 	}
 
+	currSection := m.getCurrSection()
+	if currSection != nil && id == currSection.GetId() {
+		if _, ok := msg.(prssection.SectionPullRequestsFetchedMsg); ok {
+			cmd = m.onViewedRowChanged()
+		}
+	}
+
 	return cmd
 }
 
@@ -898,16 +931,16 @@ func (m *Model) syncSidebar() tea.Cmd {
 	case branch.BranchData:
 		cmd = m.branchSidebar.SetRow(&row)
 		m.sidebar.SetContent(m.branchSidebar.View())
-	case *data.PullRequestData:
-		m.prSidebar.SetSectionId(m.currSectionId)
-		m.prSidebar.SetRow(row)
-		m.prSidebar.SetWidth(width)
-		m.sidebar.SetContent(m.prSidebar.View())
+	case *prrow.Data:
+		m.prView.SetSectionId(m.currSectionId)
+		m.prView.SetRow(row)
+		m.prView.SetWidth(width)
+		m.sidebar.SetContent(m.prView.View())
 	case *data.IssueData:
-		m.issueSidebar.SetSectionId(m.currSectionId)
-		m.issueSidebar.SetRow(row)
-		m.issueSidebar.SetWidth(width)
-		m.sidebar.SetContent(m.issueSidebar.View())
+		m.issueView.SetSectionId(m.currSectionId)
+		m.issueView.SetRow(row)
+		m.issueView.SetWidth(width)
+		m.sidebar.SetContent(m.issueView.View())
 	case *data.Notification:
 		m.notificationSidebar.SetSectionId(m.currSectionId)
 		m.notificationSidebar.SetRow(row)
