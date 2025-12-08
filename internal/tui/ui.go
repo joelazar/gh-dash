@@ -63,7 +63,7 @@ type Model struct {
 func NewModel(location config.Location) Model {
 	taskSpinner := spinner.Model{Spinner: spinner.Dot}
 	m := Model{
-		keys:        keys.Keys,
+		keys:        &keys.Keys,
 		sidebar:     sidebar.NewModel(),
 		taskSpinner: taskSpinner,
 		tasks:       map[string]context.Task{},
@@ -373,7 +373,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case m.ctx.View == config.PRsView:
 			switch {
-			switch {
 			case key.Matches(msg, keys.PRKeys.PrevSidebarTab),
 				key.Matches(msg, keys.PRKeys.NextSidebarTab):
 				var scmds []tea.Cmd
@@ -476,7 +475,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case m.ctx.View == config.IssuesView:
-			switch {
 			switch {
 			case key.Matches(msg, m.keys.OpenGithub):
 				cmds = append(cmds, m.openBrowser())
@@ -680,7 +678,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if zone.Get("donate").InBounds(msg) {
-		if zone.Get("donate").InBounds(msg) {
 			log.Info("Donate clicked", "msg", msg)
 			openCmd := func() tea.Msg {
 				b := browser.New("", os.Stdout, os.Stdin)
@@ -692,6 +689,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			cmds = append(cmds, openCmd)
 		}
+
 	case tea.WindowSizeMsg:
 		m.onWindowSizeChanged(msg)
 
@@ -817,8 +815,6 @@ func (m *Model) onViewedRowChanged() tea.Cmd {
 	m.sidebar.ScrollToTop()
 	return cmd
 }
-
-func (m *Model) onWindowSizeChanged(msg tea.WindowSizeMsg) {
 
 func (m *Model) onWindowSizeChanged(msg tea.WindowSizeMsg) {
 	log.Info("window size changed", "width", msg.Width, "height", msg.Height)
