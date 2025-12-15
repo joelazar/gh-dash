@@ -374,6 +374,8 @@ func (m *Model) renderRow(rowId int, headerColumns []string) string {
 func (m *Model) UpdateProgramContext(ctx *context.ProgramContext) {
 	m.ctx = *ctx
 	m.rowsViewport.UpdateProgramContext(ctx)
+	// Invalidate cache when context changes (e.g., theme or style updates)
+	m.cachedContentValid = false
 }
 
 func (m *Model) LastUpdated() time.Time {

@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/dlvhdr/gh-dash/v4/internal/config"
 	"github.com/dlvhdr/gh-dash/v4/internal/data"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notification"
@@ -189,14 +188,9 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 			// Check if we're under the max limit (after deduplication)
 			underMaxLimit := maxLimit <= 0 || totalNotifications < maxLimit
 
-			// Be more aggressive about fetching when under maxLimit
-			// Keep fetching if:
-			// 1. We got a full page of raw data, OR
-			// 2. We're significantly under maxLimit (by more than one page size)
-			//    even if the last fetch wasn't full (could be due to deduplication)
-			significantlyUnderLimit := maxLimit > 0 && totalNotifications < (maxLimit-limit)
-
-			m.HasNextPage = (gotFullPage || significantlyUnderLimit) && underMaxLimit
+			// Conservative pagination: only fetch more if we got a full page AND are under the limit
+			// This prevents unnecessary API calls that could lead to rate limiting
+			m.HasNextPage = gotFullPage && underMaxLimit
 			m.SetIsLoading(false)
 		}
 
@@ -216,10 +210,14 @@ func (m Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 
 						// Adjust focus position when removing an item
 						if len(m.Notifications) > 0 {
-							// If we removed the last item, move focus to previous item
-							if currentItem >= len(m.Notifications) {
+							// If we deleted an item before the cursor, shift cursor up by one
+							if i < currentItem {
+								m.Table.SetCurrItem(currentItem - 1)
+							} else if currentItem >= len(m.Notifications) {
+								// If cursor is now out of bounds, move to last item
 								m.Table.SetCurrItem(len(m.Notifications) - 1)
 							}
+							// If we deleted at or after cursor, cursor stays at same index
 						} else {
 							// No items left, reset to 0
 							m.Table.ResetCurrItem()
@@ -472,18 +470,11 @@ func (m *Model) HasRepoNameInConfiguredFilter() bool {
 
 func (m *Model) getDefaultFilter() string {
 	// Recreate the default filter logic from NewModel
+	// Note: Smart filtering is disabled for notifications by default as they are typically global.
+	// Users who want repo-specific notifications can explicitly add a repo: filter.
 	searchValue := m.Config.Filters
-	if m.Ctx != nil && m.Ctx.Config.SmartFilteringAtLaunch {
-		repo, err := repository.Current()
-		if err != nil {
-			return searchValue
-		}
-		for _, token := range strings.Fields(searchValue) {
-			if strings.HasPrefix(token, "repo:") {
-				return searchValue
-			}
-		}
-		return fmt.Sprintf("repo:%s/%s %s", repo.Owner, repo.Name, searchValue)
-	}
+
+	// Skip smart filtering for notifications - they're meant to be global
+	// Users can still explicitly add repo: filters if they want
 	return searchValue
 }

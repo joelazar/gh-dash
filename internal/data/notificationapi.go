@@ -10,16 +10,15 @@ import (
 	gh "github.com/cli/go-gh/v2/pkg/api"
 )
 
-func GetNotifications(limit int, query ...string) ([]Notification, error) {
-	result, err := GetNotificationsPaginated(1, limit, query...)
-	return result, err
-}
-
+// GetNotificationsWithLimits fetches the first page of notifications with max limit and age filtering.
+// This is a convenience wrapper around GetNotificationsPaginatedWithCurrentCount.
 func GetNotificationsWithLimits(limit int, maxLimit int, maxAgeDays int, query ...string) ([]Notification, error) {
-	result, err := GetNotificationsPaginatedWithLimits(1, limit, maxLimit, maxAgeDays, query...)
+	result, err := GetNotificationsPaginatedWithCurrentCount(1, limit, maxLimit, maxAgeDays, 0, query...)
 	return result, err
 }
 
+// GetNotificationsPaginated fetches a page of notifications without max limit or age filtering.
+// Use this for simple pagination without enforcing limits.
 func GetNotificationsPaginated(page, perPage int, query ...string) ([]Notification, error) {
 	// Parse query to determine API parameters and client-side filters
 	queryStr := ""
@@ -39,6 +38,9 @@ func GetNotificationsPaginated(page, perPage int, query ...string) ([]Notificati
 	return result, err
 }
 
+// GetNotificationsPaginatedWithCurrentCount fetches notifications with max limit enforcement
+// based on the current count (after deduplication). This is the most flexible function
+// for paginated fetching with limits and age filtering.
 func GetNotificationsPaginatedWithCurrentCount(page, perPage int, maxLimit int, maxAgeDays int, currentCount int, query ...string) ([]Notification, error) {
 	log.Debug("GetNotificationsPaginatedWithCurrentCount start", "page", page, "perPage", perPage, "maxLimit", maxLimit, "maxAgeDays", maxAgeDays, "currentCount", currentCount, "query", query)
 
@@ -50,52 +52,6 @@ func GetNotificationsPaginatedWithCurrentCount(page, perPage int, maxLimit int, 
 			return []Notification{}, nil
 		}
 		if remainingLimit < perPage {
-			effectiveLimit = remainingLimit
-		}
-	}
-
-	// Parse query to determine API parameters and client-side filters
-	queryStr := ""
-	if len(query) > 0 {
-		queryStr = query[0]
-	}
-
-	var notifications []Notification
-	var err error
-
-	// If there's a repo filter, we need to potentially fetch multiple pages
-	// to get enough matching results
-	if queryStr != "" && containsRepoFilter(queryStr) {
-		notifications, err = getNotificationsWithRepoFilter(page, effectiveLimit, queryStr)
-	} else {
-		// For queries without repo filters, use the simpler single-page approach
-		notifications, err = getNotificationsSinglePage(page, effectiveLimit, queryStr)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Apply age filtering if specified
-	if maxAgeDays > 0 {
-		notifications = filterNotificationsByAge(notifications, maxAgeDays)
-	}
-
-	return notifications, nil
-}
-
-func GetNotificationsPaginatedWithLimits(page, perPage int, maxLimit int, maxAgeDays int, query ...string) ([]Notification, error) {
-	log.Debug("GetNotificationsPaginatedWithLimits start", "page", page, "perPage", perPage, "maxLimit", maxLimit, "maxAgeDays", maxAgeDays, "query", query)
-
-	// Apply max limit enforcement - ensure we never fetch more than maxLimit total
-	effectiveLimit := perPage
-	if maxLimit > 0 {
-		totalRequested := (page-1)*perPage + perPage
-		if totalRequested > maxLimit {
-			remainingLimit := maxLimit - (page-1)*perPage
-			if remainingLimit <= 0 {
-				return []Notification{}, nil
-			}
 			effectiveLimit = remainingLimit
 		}
 	}
@@ -383,11 +339,18 @@ func MarkNotificationAsRead(threadID string) error {
 	log.Debug("MarkNotificationAsRead: calling PATCH", "endpoint", endpoint)
 
 	// GitHub returns 205 Reset Content for successful mark-as-read, with no body
-	// The Patch method expects a response to unmarshal, but GitHub returns empty body
+	// The go-gh library's Patch method tries to parse JSON, causing an EOF error
+	// See: https://github.com/cli/go-gh/pull/163
 	err = client.Patch(endpoint, nil, nil)
-	if err != nil && err.Error() != "unexpected end of JSON input" {
-		log.Error("MarkNotificationAsRead: PATCH failed", "err", err)
-		return err
+	if err != nil {
+		errMsg := err.Error()
+		// Ignore EOF-related errors that occur when parsing empty 205 responses
+		if !strings.Contains(errMsg, "unexpected end of JSON input") &&
+			!strings.Contains(errMsg, "EOF") {
+			log.Error("MarkNotificationAsRead: PATCH failed", "err", err)
+			return err
+		}
+		log.Debug("MarkNotificationAsRead: ignoring expected EOF error from empty 205 response")
 	}
 
 	log.Debug("MarkNotificationAsRead: successfully marked as read")
@@ -484,7 +447,13 @@ func convertURL(apiURL string) string {
 	case "releases":
 		return fmt.Sprintf("https://github.com/%s/%s/releases/tag/%s", owner, repo, identifier)
 	default:
-		// fallback to repo page if unknown
+		// Log unknown resource types to help identify gaps in URL conversion
+		log.Debug("convertURL: unknown resource type, falling back to repo page",
+			"resourceType", resourceType,
+			"owner", owner,
+			"repo", repo,
+			"identifier", identifier,
+			"originalURL", apiURL)
 		return fmt.Sprintf("https://github.com/%s/%s", owner, repo)
 	}
 }

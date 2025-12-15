@@ -11,20 +11,20 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/context"
 )
 
-// MarkAsDone marks the current notification as read
+// MarkAsRead marks the current notification as read
 func (m *Model) MarkAsRead() tea.Cmd {
 	if m.notification == nil {
 		log.Debug("MarkAsRead: no notification selected")
 		return nil
 	}
 
-	notificationID := m.notification.GetNumber()
+	notificationID := m.notification.ID
 
-	taskId := fmt.Sprintf("mark_as_read_notification_%d", notificationID)
+	taskId := fmt.Sprintf("mark_as_read_notification_%s", notificationID)
 	task := context.Task{
 		Id:           taskId,
-		StartText:    fmt.Sprintf("Marking notification %d to read", notificationID),
-		FinishedText: fmt.Sprintf("Marked notification %d as read", notificationID),
+		StartText:    fmt.Sprintf("Marking notification %s to read", notificationID),
+		FinishedText: fmt.Sprintf("Marked notification %s as read", notificationID),
 		State:        context.TaskStart,
 		Error:        nil,
 	}
@@ -49,7 +49,7 @@ func (m *Model) MarkAsRead() tea.Cmd {
 			TaskId:      taskId,
 			Err:         err,
 			Msg: notificationssection.UpdateNotificationMsg{
-				NotificationID: fmt.Sprint(notificationID),
+				NotificationID: notificationID,
 				IsRead:         &trueBool,
 			},
 		}

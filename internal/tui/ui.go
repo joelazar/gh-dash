@@ -92,8 +92,6 @@ func NewModel(location config.Location) Model {
 		Background(m.ctx.Theme.SelectedBackground)
 
 	m.footer = footer.NewModel(m.ctx)
-
-	m.footer = footer.NewModel(m.ctx)
 	m.prView = prview.NewModel(m.ctx)
 	m.issueView = issueview.NewModel(m.ctx)
 	m.branchSidebar = branchsidebar.NewModel(m.ctx)
@@ -761,11 +759,11 @@ func (m Model) View() string {
 	if currSection != nil {
 		if m.ctx.View == config.NotificationsView {
 			// For notifications view, don't show sidebar to maximize table width
-			content = m.getCurrSection().View()
+			content = currSection.View()
 		} else {
 			content = lipgloss.JoinHorizontal(
 				lipgloss.Top,
-				m.getCurrSection().View(),
+				currSection.View(),
 				m.sidebar.View(),
 			)
 		}
@@ -938,10 +936,15 @@ func (m *Model) syncSidebar() tea.Cmd {
 		m.issueView.SetWidth(width)
 		m.sidebar.SetContent(m.issueView.View())
 	case *data.Notification:
+		// Update notification sidebar state for actions (MarkAsRead/MarkAsDone)
 		m.notificationSidebar.SetSectionId(m.currSectionId)
 		m.notificationSidebar.SetRow(row)
 		m.notificationSidebar.SetWidth(width)
-		m.sidebar.SetContent(m.notificationSidebar.View())
+		// Note: Sidebar is not shown for notifications view to maximize table width,
+		// but we still maintain state for keyboard actions to work
+		if m.ctx.View != config.NotificationsView {
+			m.sidebar.SetContent(m.notificationSidebar.View())
+		}
 	}
 
 	return cmd

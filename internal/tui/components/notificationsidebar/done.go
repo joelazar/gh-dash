@@ -18,15 +18,15 @@ func (m *Model) MarkAsDone() tea.Cmd {
 		return nil
 	}
 
+	notificationID := m.notification.ID
+
 	log.Debug("MarkAsDone: marking notification as done", "threadID", m.notification.ThreadID)
 
-	notificationID := m.notification.GetNumber()
-
-	taskId := fmt.Sprintf("mark_as_done_notification_%d", notificationID)
+	taskId := fmt.Sprintf("mark_as_done_notification_%s", notificationID)
 	task := context.Task{
 		Id:           taskId,
-		StartText:    fmt.Sprintf("Marking notification %d as done", notificationID),
-		FinishedText: fmt.Sprintf("Marked notification %d as done", notificationID),
+		StartText:    fmt.Sprintf("Marking notification %s as done", notificationID),
+		FinishedText: fmt.Sprintf("Marked notification %s as done", notificationID),
 		State:        context.TaskStart,
 		Error:        nil,
 	}
@@ -49,7 +49,7 @@ func (m *Model) MarkAsDone() tea.Cmd {
 			TaskId:      taskId,
 			Err:         err,
 			Msg: notificationssection.UpdateNotificationMsg{
-				NotificationID: fmt.Sprint(notificationID),
+				NotificationID: notificationID,
 				IsDone:         &trueBool,
 			},
 		}
