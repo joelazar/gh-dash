@@ -28,34 +28,34 @@ type Dimensions struct {
 const (
 	Ellipsis = "…"
 
-	PersonIcon  = ""
-	WaitingIcon = ""
-	EmptyIcon   = ""
+	PersonIcon  = ""
+	WaitingIcon = ""
+	EmptyIcon   = ""
 	FailureIcon = "󰅙"
-	SuccessIcon = ""
+	SuccessIcon = ""
 
-	CommentIcon  = ""
-	CommentsIcon = ""
-	DraftIcon    = ""
+	CommentIcon  = ""
+	CommentsIcon = ""
+	DraftIcon    = ""
 	BehindIcon   = "󰇮"
-	BlockedIcon  = ""
-	MergedIcon   = ""
-	OpenIcon     = ""
-	ClosedIcon   = ""
+	BlockedIcon  = ""
+	MergedIcon   = ""
+	OpenIcon     = ""
+	ClosedIcon   = ""
 	DonateIcon   = "󱃱"
 
 	// New contributors: users who created a PR for the repo for the first time
 	NewContributorIcon = "󰎔" // \udb80\udf94 nf-md-new_box
 
 	// Contributors: everyone who has contributed something back to the project
-	ContributorIcon = "" // \uedc6 nf-fa-user_check
+	ContributorIcon = "" // \uedc6 nf-fa-user_check
 
 	// Collaborator is a person who isn't explicitly a member of your organization,
 	// but who has Read, Write, or Admin permissions to one or more repositories in your organization.
-	CollaboratorIcon = "" // \uedcf nf-fa-user_shield
+	CollaboratorIcon = "" // \uedcf nf-fa-user_shield
 
 	// A member of the organization
-	MemberIcon = "" // \uf42b nf-oct-organization
+	MemberIcon = "" // \uf42b nf-oct-organization
 
 	// The person/s who has administrative ownership over the organization or repository (not always the same as the original author)
 	OwnerIcon = "󱇐" // \udb84\uddd0 nf-md-crown_outline

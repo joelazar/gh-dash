@@ -109,12 +109,12 @@ func (m *Model) UpdateProgramContext(ctx *context.ProgramContext) {
 }
 
 func (m *Model) renderViewButton(view config.ViewType) string {
-	v := " PRs"
+	v := " PRs"
 	if view == config.IssuesView {
-		v = " Issues"
+		v = " Issues"
 	}
 	if view == config.NotificationsView {
-		v = " Notifications"
+		v = "󰎚 Notifications"
 	}
 
 	if m.ctx.View == view {
@@ -130,7 +130,7 @@ func (m *Model) renderViewSwitcher(ctx *context.ProgramContext) string {
 		if m.ctx.RepoUrl != "" {
 			name = git.GetRepoShortName(m.ctx.RepoUrl)
 		}
-		repo = ctx.Styles.Common.FooterStyle.Render(fmt.Sprintf(" %s", name))
+		repo = ctx.Styles.Common.FooterStyle.Render(fmt.Sprintf(" %s", name))
 	}
 
 	var user string
@@ -146,7 +146,7 @@ func (m *Model) renderViewSwitcher(ctx *context.ProgramContext) string {
 		ctx.Styles.ViewSwitcher.ViewsSeparator.Render(" │ "),
 		m.renderViewButton(config.NotificationsView),
 		lipgloss.NewStyle().Background(ctx.Styles.Common.FooterStyle.GetBackground()).Foreground(
-			ctx.Styles.ViewSwitcher.ViewsSeparator.GetBackground()).Render(" "),
+			ctx.Styles.ViewSwitcher.ViewsSeparator.GetBackground()).Render(" "),
 		repo,
 		ctx.Styles.Common.FooterStyle.Foreground(m.ctx.Theme.FaintText).Render(" • "),
 		user,

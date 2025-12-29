@@ -233,8 +233,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.Up):
-
-		case key.Matches(msg, m.keys.Up):
 			if currSection != nil {
 				currSection.PrevRow()
 				cmd = m.onViewedRowChanged()
@@ -365,6 +363,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newSections, fetchSectionsCmds := m.fetchAllViewSections()
 					m.setCurrentViewSections(newSections)
 					cmd = fetchSectionsCmds
+				} else {
+					m.tabs.SetSections(currSections)
 				}
 				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				cmds = append(cmds, m.onViewedRowChanged())
@@ -463,6 +463,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newSections, fetchSectionsCmds := m.fetchAllViewSections()
 					m.setCurrentViewSections(newSections)
 					cmd = fetchSectionsCmds
+				} else {
+					m.tabs.SetSections(currSections)
 				}
 				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				cmds = append(cmds, m.onViewedRowChanged())
@@ -532,6 +534,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newSections, fetchSectionsCmds := m.fetchAllViewSections()
 					m.setCurrentViewSections(newSections)
 					cmd = fetchSectionsCmds
+				} else {
+					m.tabs.SetSections(currSections)
 				}
 				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				cmds = append(cmds, m.onViewedRowChanged())
@@ -559,6 +563,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					newSections, fetchSectionsCmds := m.fetchAllViewSections()
 					m.setCurrentViewSections(newSections)
 					cmd = fetchSectionsCmds
+				} else {
+					m.tabs.SetSections(currSections)
 				}
 				m.setCurrSectionId(m.getCurrentViewDefaultSection())
 				cmds = append(cmds, m.onViewedRowChanged())
@@ -575,15 +581,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		newSections, fetchSectionsCmds := m.fetchAllViewSections()
 		m.setCurrentViewSections(newSections)
-		// Set currSectionId after sections are populated to avoid out of bounds access
-		defaultSection := m.getCurrentViewDefaultSection()
-		currSections := m.getCurrentViewSections()
-		if defaultSection >= len(currSections) && len(currSections) > 0 {
-			m.currSectionId = len(currSections) - 1
-		} else {
-			m.currSectionId = defaultSection
-		}
-		cmds = append(cmds, fetchSectionsCmds, fetchUser, m.doRefreshAtInterval(), m.doUpdateFooterAtInterval())
+		m.setCurrSectionId(m.getCurrentViewDefaultSection())
+		cmds = append(cmds, fetchSectionsCmds, m.tabs.Init(), fetchUser, m.doRefreshAtInterval(), m.doUpdateFooterAtInterval())
 
 	case intervalRefresh:
 		newSections, fetchSectionsCmds := m.fetchAllViewSections()
@@ -632,6 +631,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case notificationssection.NotificationsFetchedMsg:
 		cmd = m.updateSection(msg.SectionId, notificationssection.SectionType, msg)
+		// Refresh tabs to update loading state
+		m.tabs.SetSections(m.getCurrentViewSections())
 		if msg.SectionId == m.currSectionId {
 			m.onViewedRowChanged()
 		}
@@ -825,12 +826,14 @@ func (m *Model) onWindowSizeChanged(msg tea.WindowSizeMsg) {
 		m.ctx.MainContentHeight = msg.Height - common.TabsHeight - common.FooterHeight
 	}
 	m.syncMainContentWidth()
+	m.tabs.UpdateProgramContext(m.ctx)
 }
 
 func (m *Model) syncProgramContext() {
 	for _, section := range m.getCurrentViewSections() {
 		section.UpdateProgramContext(m.ctx)
 	}
+	m.tabs.UpdateProgramContext(m.ctx)
 	m.footer.UpdateProgramContext(m.ctx)
 	m.sidebar.UpdateProgramContext(m.ctx)
 	m.prView.UpdateProgramContext(m.ctx)
@@ -1012,44 +1015,60 @@ func (m *Model) setCurrentViewSections(newSections []section.Section) {
 	if newSections == nil {
 		return
 	}
-	switch m.ctx.View {
-	case config.PRsView:
-		search := prssection.NewModel(
-			0,
-			m.ctx,
-			config.PrsSectionConfig{
-				Title:   "",
-				Filters: "archived:false",
-			},
-			time.Now(),
-			time.Now(),
-		)
-		m.prs = append([]section.Section{&search}, newSections...)
-	case config.IssuesView:
-		search := issuessection.NewModel(
-			0,
-			m.ctx,
-			config.IssuesSectionConfig{
-				Title:   "",
-				Filters: "",
-			},
-			time.Now(),
-			time.Now(),
-		)
-		m.issues = append([]section.Section{&search}, newSections...)
-	case config.NotificationsView:
-		search := notificationssection.NewModel(
-			0,
-			m.ctx,
-			config.NotificationsSectionConfig{
-				Title:   "",
-				Filters: "",
-			},
-			time.Now(),
-			time.Now(),
-		)
-		m.notifications = append([]section.Section{&search}, newSections...)
+
+	missingSearchSection := len(newSections) == 0 || (len(newSections) > 0 && newSections[0].GetId() != 0)
+	s := make([]section.Section, 0)
+	if m.ctx.View == config.PRsView {
+		if missingSearchSection {
+			search := prssection.NewModel(
+				0,
+				m.ctx,
+				config.PrsSectionConfig{
+					Title:   "",
+					Filters: "archived:false",
+				},
+				time.Now(),
+				time.Now(),
+			)
+			s = append(s, &search)
+		}
+		m.prs = append(s, newSections...)
+		newSections = m.prs
+	} else if m.ctx.View == config.IssuesView {
+		if missingSearchSection {
+			search := issuessection.NewModel(
+				0,
+				m.ctx,
+				config.IssuesSectionConfig{
+					Title:   "",
+					Filters: "",
+				},
+				time.Now(),
+				time.Now(),
+			)
+			s = append(s, &search)
+		}
+		m.issues = append(s, newSections...)
+		newSections = m.issues
+	} else if m.ctx.View == config.NotificationsView {
+		if missingSearchSection {
+			search := notificationssection.NewModel(
+				0,
+				m.ctx,
+				config.NotificationsSectionConfig{
+					Title:   "",
+					Filters: "",
+				},
+				time.Now(),
+				time.Now(),
+			)
+			s = append(s, &search)
+		}
+		m.notifications = append(s, newSections...)
+		newSections = m.notifications
 	}
+
+	m.tabs.SetSections(newSections)
 }
 
 func (m *Model) switchSelectedView() config.ViewType {
