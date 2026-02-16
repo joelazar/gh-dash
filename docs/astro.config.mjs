@@ -41,7 +41,6 @@ export default defineConfig({
       ],
       components: {
         Header: "./src/components/Header.astro",
-        PageTitle: "./src/components/Title.astro",
       },
       social: [
         {
@@ -74,6 +73,7 @@ export default defineConfig({
             "configuration/searching",
             "configuration/pr-section",
             "configuration/issue-section",
+            "configuration/notification-section",
             "configuration/repo-paths",
             "configuration/keybindings",
             "configuration/theme",
@@ -89,25 +89,28 @@ export default defineConfig({
             },
           ],
         },
-        { slug: "contributing" },
-        { slug: "donating" },
         {
-          label: "Insiders 🌟",
+          label: "Companion Apps",
           items: [
-            "insiders",
             {
               label: "ENHANCE",
               collapsed: true,
               items: [
-                "insiders/enhance/getting-started",
-                "insiders/enhance/usage",
-                "insiders/enhance/keybindings",
-                "insiders/enhance/dash-integration",
-                "insiders/enhance/theme",
+                "companions/enhance/getting-started",
+                "companions/enhance/usage",
+                "companions/enhance/keybindings",
+                "companions/enhance/dash-integration",
+                "companions/enhance/theme",
               ],
             },
           ],
         },
+        {
+          label: "Insiders 🌟",
+          items: ["insiders"],
+        },
+        { slug: "contributing" },
+        { slug: "donating" },
       ],
     }),
   ],

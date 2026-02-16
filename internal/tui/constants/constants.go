@@ -28,21 +28,33 @@ type Dimensions struct {
 const (
 	Ellipsis = "…"
 
-	PersonIcon  = ""
-	WaitingIcon = ""
-	EmptyIcon   = ""
-	FailureIcon = "󰅙"
-	SuccessIcon = ""
+	ApprovedIcon         = "󰄬"
+	ChangesRequestedIcon = ""
+	DotIcon              = ""
+	SmallDotIcon         = "⋅"
+	HorizontalLineIcon   = "─"
+	EmptyIcon            = ""
+	FailureIcon          = "󰅙"
+	PersonIcon           = ""
+	SuccessIcon          = ""
+	TeamIcon             = ""
+	WaitingIcon          = ""
 
-	CommentIcon  = ""
-	CommentsIcon = ""
-	DraftIcon    = ""
-	BehindIcon   = "󰇮"
-	BlockedIcon  = ""
-	MergedIcon   = ""
-	OpenIcon     = ""
-	ClosedIcon   = ""
-	DonateIcon   = "󱃱"
+	BehindIcon         = "󰇮"
+	BlockedIcon        = ""
+	ClosedIcon         = ""
+	CodeReviewIcon     = ""
+	CommentIcon        = ""
+	CommentsIcon       = ""
+	DonateIcon         = "󱃱"
+	DraftIcon          = ""
+	CommitIcon         = ""
+	VerticalCommitIcon = "󰜘"
+	LabelsIcon         = "󰌖"
+	MergedIcon         = ""
+	MergeQueueIcon     = "" // \uf4db nf-oct-git_merge_queue
+	OpenIcon           = ""
+	SelectionIcon      = "❯"
 
 	// New contributors: users who created a PR for the repo for the first time
 	NewContributorIcon = "󰎔" // \udb80\udf94 nf-md-new_box
@@ -58,9 +70,22 @@ const (
 	MemberIcon = "" // \uf42b nf-oct-organization
 
 	// The person/s who has administrative ownership over the organization or repository (not always the same as the original author)
-	OwnerIcon = "󱇐" // \udb84\uddd0 nf-md-crown_outline
+	OwnerIcon = "" // \uf511 nf-oct-shield_lock
 
-	UnknownRoleIcon = "󱐡" // \udb85\udc21 nf-md-incognito_circle
+	UnknownRoleIcon = "󰭙" // \udb82\udf59 nf-md-account_question
+
+	// Notification type icons
+	WorkflowIcon     = "" // \uf52e nf-oct-checklist (for CheckSuite/CI)
+	WorkflowRunIcon  = "" // \uebd6 nf-cod-workflow (for CheckSuite default)
+	SecurityIcon     = "󰒃" // \udb80\udc83 nf-md-shield_alert (for security alerts)
+	SearchIcon       = "" // \uf002 nf-fa-search
+
+	// Prompts
+	AssignPrompt   = "Assign users (whitespace-separated)" + Ellipsis
+	UnassignPrompt = "Unassign users (whitespace-separated)" + Ellipsis
+	CommentPrompt  = "Leave a comment" + Ellipsis
+	ApprovalPrompt = "Approve with comment" + Ellipsis
+	LabelPrompt    = "Add/remove labels (comma-separated)" + Ellipsis
 
 	// Notification icons
 	NotificationIcon    = "󰎚" // nf-md-bell

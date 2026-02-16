@@ -49,14 +49,14 @@ func (pr *PullRequest) renderReviewStatus() string {
 		reviewCellStyle = reviewCellStyle.Foreground(
 			pr.Ctx.Theme.SuccessText,
 		)
-		return reviewCellStyle.Render("󰄬")
+		return reviewCellStyle.Render(constants.ApprovedIcon)
 	}
 
 	if pr.Data.Primary.ReviewDecision == "CHANGES_REQUESTED" {
 		reviewCellStyle = reviewCellStyle.Foreground(
 			pr.Ctx.Theme.ErrorText,
 		)
-		return reviewCellStyle.Render("")
+		return reviewCellStyle.Render(constants.ChangesRequestedIcon)
 	}
 
 	if pr.Data.Primary.Reviews.TotalCount > 0 {
@@ -75,6 +75,9 @@ func (pr *PullRequest) renderState() string {
 
 	switch pr.Data.Primary.State {
 	case "OPEN":
+		if pr.Data.Primary.IsInMergeQueue {
+			return mergeCellStyle.Foreground(pr.Ctx.Theme.WarningText).Render(constants.MergeQueueIcon)
+		}
 		if pr.Data.Primary.IsDraft {
 			return mergeCellStyle.Foreground(pr.Ctx.Theme.FaintText).Render(constants.DraftIcon)
 		} else {
@@ -92,6 +95,9 @@ func (pr *PullRequest) renderState() string {
 }
 
 func (pr *PullRequest) GetStatusChecksRollup() checks.CommitState {
+	if pr.Data == nil || pr.Data.Primary == nil {
+		return checks.CommitStateUnknown
+	}
 	commits := pr.Data.Primary.Commits.Nodes
 	if len(commits) == 0 {
 		return checks.CommitStateUnknown
@@ -182,7 +188,7 @@ func (pr *PullRequest) renderExtendedTitle(isSelected bool) string {
 		baseStyle = baseStyle.Foreground(pr.Ctx.Theme.SecondaryText).Background(pr.Ctx.Theme.SelectedBackground)
 	}
 
-	author := baseStyle.Render(fmt.Sprintf("@%s",
+	author := baseStyle.Bold(true).Render(fmt.Sprintf("@%s",
 		pr.Data.Primary.GetAuthor(pr.Ctx.Theme, pr.ShowAuthorIcon)))
 	top := lipgloss.JoinHorizontal(lipgloss.Top, pr.Data.Primary.Repository.NameWithOwner,
 		fmt.Sprintf(" #%d by %s", pr.Data.Primary.Number, author))
@@ -200,7 +206,8 @@ func (pr *PullRequest) renderExtendedTitle(isSelected bool) string {
 	}
 	width := titleColumn.ComputedWidth - 2
 	top = baseStyle.Foreground(pr.Ctx.Theme.SecondaryText).Width(width).MaxWidth(width).Height(1).MaxHeight(1).Render(top)
-	title = baseStyle.Foreground(pr.Ctx.Theme.PrimaryText).Width(width).MaxWidth(width).Height(1).MaxHeight(1).Render(title)
+	title = baseStyle.Foreground(pr.Ctx.Theme.PrimaryText).Bold(true).Width(width).MaxWidth(
+		width).Height(1).MaxHeight(1).Render(title)
 
 	return baseStyle.Render(lipgloss.JoinVertical(lipgloss.Left, top, title))
 }
@@ -284,6 +291,9 @@ func (pr *PullRequest) renderBaseName() string {
 func (pr *PullRequest) RenderState() string {
 	switch pr.Data.Primary.State {
 	case "OPEN":
+		if pr.Data.Primary.IsInMergeQueue {
+			return constants.MergeQueueIcon + " Queued"
+		}
 		if pr.Data.Primary.IsDraft {
 			return constants.DraftIcon + " Draft"
 		} else {

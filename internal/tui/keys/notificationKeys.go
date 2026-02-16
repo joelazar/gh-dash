@@ -10,49 +10,79 @@ import (
 )
 
 type NotificationKeyMap struct {
-	MarkDone     key.Binding
-	MarkRead     key.Binding
-	ViewSwitch   key.Binding
-	SortToggle   key.Binding
-	FilterByRepo key.Binding
-	ResetFilter  key.Binding
+	View                 key.Binding
+	MarkAsDone           key.Binding
+	MarkAllAsDone        key.Binding
+	MarkAsRead           key.Binding
+	MarkAllAsRead        key.Binding
+	Unsubscribe          key.Binding
+	ToggleBookmark       key.Binding
+	Open                 key.Binding
+	SortByRepo           key.Binding
+	SwitchToPRs          key.Binding
+	ToggleSmartFiltering key.Binding
 }
 
 var NotificationKeys = NotificationKeyMap{
-	MarkRead: key.NewBinding(
-		key.WithKeys("a"),
-		key.WithHelp("a", "mark as read"),
+	View: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "view notification"),
 	),
-	MarkDone: key.NewBinding(
-		key.WithKeys("d"),
-		key.WithHelp("d", "mark as done"),
+	MarkAsDone: key.NewBinding(
+		key.WithKeys("D"),
+		key.WithHelp("D", "mark as done"),
 	),
-	ViewSwitch: key.NewBinding(
-		key.WithKeys("s"),
-		key.WithHelp("s", "switch view"),
+	MarkAllAsDone: key.NewBinding(
+		key.WithKeys("alt+d"),
+		key.WithHelp("Alt+d", "mark all as done"),
 	),
-	SortToggle: key.NewBinding(
+	MarkAsRead: key.NewBinding(
+		key.WithKeys("m"),
+		key.WithHelp("m", "mark as read"),
+	),
+	MarkAllAsRead: key.NewBinding(
+		key.WithKeys("M"),
+		key.WithHelp("M", "mark all as read"),
+	),
+	Unsubscribe: key.NewBinding(
+		key.WithKeys("u"),
+		key.WithHelp("u", "unsubscribe"),
+	),
+	ToggleBookmark: key.NewBinding(
+		key.WithKeys("b"),
+		key.WithHelp("b", "toggle bookmark"),
+	),
+	Open: key.NewBinding(
+		key.WithKeys("o"),
+		key.WithHelp("o", "open in browser"),
+	),
+	SortByRepo: key.NewBinding(
 		key.WithKeys("S"),
-		key.WithHelp("S", "toggle sort"),
+		key.WithHelp("S", "sort by repo"),
 	),
-	FilterByRepo: key.NewBinding(
-		key.WithKeys("f"),
-		key.WithHelp("f", "filter by repo"),
+	SwitchToPRs: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "switch to PRs"),
 	),
-	ResetFilter: key.NewBinding(
-		key.WithKeys("F"),
-		key.WithHelp("F", "reset filter"),
+	ToggleSmartFiltering: key.NewBinding(
+		key.WithKeys("t"),
+		key.WithHelp("t", "toggle smart filtering"),
 	),
 }
 
 func NotificationFullHelp() []key.Binding {
 	return []key.Binding{
-		NotificationKeys.MarkRead,
-		NotificationKeys.MarkDone,
-		NotificationKeys.ViewSwitch,
-		NotificationKeys.SortToggle,
-		NotificationKeys.FilterByRepo,
-		NotificationKeys.ResetFilter,
+		NotificationKeys.View,
+		NotificationKeys.MarkAsDone,
+		NotificationKeys.MarkAllAsDone,
+		NotificationKeys.MarkAsRead,
+		NotificationKeys.MarkAllAsRead,
+		NotificationKeys.Unsubscribe,
+		NotificationKeys.ToggleBookmark,
+		NotificationKeys.Open,
+		NotificationKeys.SortByRepo,
+		NotificationKeys.SwitchToPRs,
+		NotificationKeys.ToggleSmartFiltering,
 	}
 }
 
@@ -64,7 +94,6 @@ func rebindNotificationKeys(keys []config.Keybinding) error {
 
 	for _, notificationKey := range keys {
 		if notificationKey.Builtin == "" {
-			// Handle custom commands
 			if notificationKey.Command != "" {
 				name := notificationKey.Name
 				if notificationKey.Name == "" {
@@ -86,18 +115,28 @@ func rebindNotificationKeys(keys []config.Keybinding) error {
 		var key *key.Binding
 
 		switch notificationKey.Builtin {
-		case "markRead":
-			key = &NotificationKeys.MarkRead
-		case "markDone":
-			key = &NotificationKeys.MarkDone
-		case "viewSwitch":
-			key = &NotificationKeys.ViewSwitch
-		case "sortToggle":
-			key = &NotificationKeys.SortToggle
-		case "filterByRepo":
-			key = &NotificationKeys.FilterByRepo
-		case "resetFilter":
-			key = &NotificationKeys.ResetFilter
+		case "view":
+			key = &NotificationKeys.View
+		case "markAsDone":
+			key = &NotificationKeys.MarkAsDone
+		case "markAllAsDone":
+			key = &NotificationKeys.MarkAllAsDone
+		case "markAsRead":
+			key = &NotificationKeys.MarkAsRead
+		case "markAllAsRead":
+			key = &NotificationKeys.MarkAllAsRead
+		case "unsubscribe":
+			key = &NotificationKeys.Unsubscribe
+		case "toggleBookmark":
+			key = &NotificationKeys.ToggleBookmark
+		case "open":
+			key = &NotificationKeys.Open
+		case "sortByRepo":
+			key = &NotificationKeys.SortByRepo
+		case "switchToPRs":
+			key = &NotificationKeys.SwitchToPRs
+		case "toggleSmartFiltering":
+			key = &NotificationKeys.ToggleSmartFiltering
 		default:
 			return fmt.Errorf("unknown built-in notification key: '%s'", notificationKey.Builtin)
 		}

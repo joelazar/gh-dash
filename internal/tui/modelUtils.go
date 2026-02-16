@@ -168,6 +168,7 @@ func (m *Model) runCustomPRCommand(commandTemplate string, prData *prrow.Data) t
 			"PrNumber":    prData.Primary.Number,
 			"HeadRefName": prData.Primary.HeadRefName,
 			"BaseRefName": prData.Primary.BaseRefName,
+			"Author":      prData.Primary.Author.Login,
 		})
 }
 
@@ -176,6 +177,7 @@ func (m *Model) runCustomIssueCommand(commandTemplate string, issueData *data.Is
 		&map[string]any{
 			"RepoName":    issueData.GetRepoNameWithOwner(),
 			"IssueNumber": issueData.Number,
+			"Author":      issueData.Author.Login,
 		},
 	)
 }
@@ -194,6 +196,7 @@ func (m *Model) runCustomBranchCommand(commandTemplate string, branchData *prrow
 				"PrNumber":    branchData.Primary.Number,
 				"HeadRefName": branchData.Primary.HeadRefName,
 				"BaseRefName": branchData.Primary.BaseRefName,
+				"Author":      branchData.Primary.Author.Login,
 			})
 	}
 	return m.runCustomCommand(commandTemplate, &input)

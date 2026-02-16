@@ -16,6 +16,8 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/inputbox"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prrow"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prssection"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/tasks"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/constants"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/context"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/keys"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/markdown"
@@ -25,8 +27,6 @@ import (
 var (
 	htmlCommentRegex = regexp.MustCompile("(?U)<!--(.|[[:space:]])*-->")
 	lineCleanupRegex = regexp.MustCompile(`((\n)+|^)([^\r\n]*\|[^\r\n]*(\n)?)+`)
-	commentPrompt    = "Leave a comment..."
-	approvalPrompt   = "Approve with comment..."
 	foldBodyHeight   = 8
 )
 
@@ -47,7 +47,7 @@ type Model struct {
 	inputBox inputbox.Model
 }
 
-var tabs = []string{" Overview", " Checks", " Activity", " Files Changed"}
+var tabs = []string{" Overview", " Activity", " Commits", " Checks", " Files Changed"}
 
 func NewModel(ctx *context.ProgramContext) Model {
 	inputBox := inputbox.NewModel(ctx)
@@ -84,7 +84,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			switch msg.Type {
 			case tea.KeyCtrlD:
 				if len(strings.Trim(m.inputBox.Value(), " ")) != 0 {
-					cmd = m.comment(m.inputBox.Value())
+					sid := tasks.SectionIdentifier{Id: m.sectionId, Type: prssection.SectionType}
+					cmd = tasks.CommentOnPR(m.ctx, sid, m.pr.Data.Primary, m.inputBox.Value())
 				}
 				m.inputBox.Blur()
 				m.isCommenting = false
@@ -102,11 +103,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					}
 				}
 				if m.ShowConfirmCancel && (msg.String() == "N" || msg.String() == "n") {
-					m.inputBox.SetPrompt(commentPrompt)
+					m.inputBox.SetPrompt(constants.CommentPrompt)
 					m.ShowConfirmCancel = false
 					return m, nil
 				}
-				m.inputBox.SetPrompt(commentPrompt)
+				m.inputBox.SetPrompt(constants.CommentPrompt)
 				m.ShowConfirmCancel = false
 			}
 
@@ -119,7 +120,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				if len(strings.Trim(m.inputBox.Value(), " ")) != 0 {
 					comment = m.inputBox.Value()
 				}
-				cmd = m.approve(comment)
+				sid := tasks.SectionIdentifier{Id: m.sectionId, Type: prssection.SectionType}
+				cmd = tasks.ApprovePR(m.ctx, sid, m.pr.Data.Primary, comment)
 				m.inputBox.Blur()
 				m.isApproving = false
 				return m, cmd
@@ -129,7 +131,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 			default:
-				m.inputBox.SetPrompt(approvalPrompt)
+				m.inputBox.SetPrompt(constants.ApprovalPrompt)
 				m.ShowConfirmCancel = false
 			}
 
@@ -140,7 +142,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			case tea.KeyCtrlD:
 				usernames := strings.Fields(m.inputBox.Value())
 				if len(usernames) > 0 {
-					cmd = m.assign(usernames)
+					sid := tasks.SectionIdentifier{Id: m.sectionId, Type: prssection.SectionType}
+					cmd = tasks.AssignPR(m.ctx, sid, m.pr.Data.Primary, usernames)
 				}
 				m.inputBox.Blur()
 				m.isAssigning = false
@@ -159,7 +162,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			case tea.KeyCtrlD:
 				usernames := strings.Fields(m.inputBox.Value())
 				if len(usernames) > 0 {
-					cmd = m.unassign(usernames)
+					sid := tasks.SectionIdentifier{Id: m.sectionId, Type: prssection.SectionType}
+					cmd = tasks.UnassignPR(m.ctx, sid, m.pr.Data.Primary, usernames)
 				}
 				m.inputBox.Blur()
 				m.isUnassigning = false
@@ -177,12 +181,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.PRKeys.PrevSidebarTab):
 				m.carousel.MoveLeft()
-				return m, nil
 			case key.Matches(msg, keys.PRKeys.NextSidebarTab):
 				m.carousel.MoveRight()
-				return m, nil
 			}
-			return m, nil
 		}
 	}
 
@@ -213,6 +214,12 @@ func (m Model) View() string {
 
 	switch m.carousel.SelectedItem() {
 	case tabs[0]:
+		reviewers := m.renderRequestedReviewers()
+		if reviewers != "" {
+			body.WriteString(reviewers)
+			body.WriteString("\n\n")
+		}
+
 		labels := m.renderLabels()
 		if labels != "" {
 			body.WriteString(labels)
@@ -234,13 +241,14 @@ func (m Model) View() string {
 		}
 
 	case tabs[1]:
+		body.WriteString(m.renderActivity())
+	case tabs[2]:
+		body.WriteString(m.renderCommits())
+	case tabs[3]:
 		body.WriteString(m.renderChecksOverview())
 		body.WriteString("\n\n")
 		body.WriteString(m.renderChecks())
-
-	case tabs[2]:
-		body.WriteString(m.renderActivity())
-	case tabs[3]:
+	case tabs[4]:
 		body.WriteString(m.renderChangedFiles())
 	}
 
@@ -251,22 +259,12 @@ func (m Model) View() string {
 }
 
 func (m *Model) renderFullNameAndNumber() string {
-	return lipgloss.NewStyle().
-		PaddingLeft(1).
-		Width(m.width).
-		Background(m.ctx.Theme.SelectedBackground).
-		Foreground(m.ctx.Theme.SecondaryText).
-		Render(fmt.Sprintf("%s · #%d", m.pr.Data.Primary.GetRepoNameWithOwner(), m.pr.Data.Primary.GetNumber()))
+	return common.RenderPreviewHeader(m.ctx.Theme, m.width,
+		fmt.Sprintf("%s · #%d", m.pr.Data.Primary.GetRepoNameWithOwner(), m.pr.Data.Primary.GetNumber()))
 }
 
 func (m *Model) renderTitle() string {
-	return lipgloss.NewStyle().Height(3).Width(m.width).Background(
-		m.ctx.Theme.SelectedBackground).PaddingLeft(1).Render(
-		lipgloss.PlaceVertical(3, lipgloss.Center, m.ctx.Styles.Common.MainTextStyle.
-			Background(m.ctx.Theme.SelectedBackground).
-			Render(m.pr.Data.Primary.Title),
-		),
-	)
+	return common.RenderPreviewTitle(m.ctx.Theme, m.ctx.Styles.Common, m.width, m.pr.Data.Primary.Title)
 }
 
 func (m *Model) renderBranches() string {
@@ -310,9 +308,175 @@ func (m *Model) renderLabels() string {
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		m.ctx.Styles.Common.MainTextStyle.Underline(true).Bold(true).Render("Labels"),
+		m.ctx.Styles.Common.MainTextStyle.Underline(true).Bold(true).Render(
+			fmt.Sprintf("%s Labels", constants.LabelsIcon)),
 		"",
 		common.RenderLabels(width, labels, style),
+	)
+}
+
+type reviewerItem struct {
+	text string
+}
+
+func (m *Model) renderRequestedReviewers() string {
+	if !m.pr.Data.IsEnriched {
+		return lipgloss.JoinVertical(
+			lipgloss.Left,
+			m.ctx.Styles.Common.MainTextStyle.Underline(true).Bold(true).Render(
+				fmt.Sprintf("%s Reviewers", constants.CodeReviewIcon)),
+			"",
+			lipgloss.JoinHorizontal(lipgloss.Top, m.ctx.Styles.Common.WaitingGlyph, " ", m.ctx.Styles.Common.FaintTextStyle.Render("Loading...")),
+		)
+	}
+
+	reviewRequests := m.pr.Data.Enriched.ReviewRequests.Nodes
+	reviews := m.pr.Data.Enriched.Reviews.Nodes
+	suggestedReviewers := m.pr.Data.Enriched.SuggestedReviewers
+
+	if len(reviewRequests) == 0 && len(reviews) == 0 && len(suggestedReviewers) == 0 {
+		return ""
+	}
+
+	reviewStates := make(map[string]string)
+	for _, review := range reviews {
+		login := review.Author.Login
+		existingState := reviewStates[login]
+		// Don't override APPROVED or CHANGES_REQUESTED with COMMENTED
+		if review.State == "COMMENTED" && (existingState == "APPROVED" || existingState == "CHANGES_REQUESTED") {
+			continue
+		}
+		reviewStates[login] = review.State
+	}
+
+	reviewerItems := make([]reviewerItem, 0)
+	faintStyle := m.ctx.Styles.Common.FaintTextStyle
+	reviewerStyle := lipgloss.NewStyle().Foreground(m.ctx.Theme.FaintText)
+	successStyle := lipgloss.NewStyle().Foreground(m.ctx.Theme.SuccessText)
+	errorStyle := lipgloss.NewStyle().Foreground(m.ctx.Theme.ErrorText)
+
+	shownReviewers := make(map[string]bool)
+
+	for _, req := range reviewRequests {
+		displayName := req.GetReviewerDisplayName()
+		if displayName == "" {
+			continue
+		}
+		shownReviewers[displayName] = true
+
+		var reviewerStr string
+		stateIcon := ""
+		if state, hasReview := reviewStates[displayName]; hasReview && state == "COMMENTED" {
+			stateIcon = m.ctx.Styles.Common.CommentGlyph
+		} else {
+			stateIcon = m.ctx.Styles.Common.WaitingDotGlyph
+		}
+
+		if req.IsTeam() {
+			reviewerStr += reviewerStyle.Render(displayName)
+		} else {
+			reviewerStr += reviewerStyle.Render("@" + displayName)
+		}
+
+		if req.AsCodeOwner {
+			reviewerStr = lipgloss.JoinHorizontal(lipgloss.Top,
+				faintStyle.Render(constants.OwnerIcon), " ", reviewerStr)
+		}
+		reviewerStr = lipgloss.JoinHorizontal(lipgloss.Top, stateIcon, " ", reviewerStr)
+
+		reviewerItems = append(reviewerItems, reviewerItem{text: reviewerStr})
+	}
+
+	for login, state := range reviewStates {
+		if shownReviewers[login] {
+			continue
+		}
+		if state != "APPROVED" && state != "CHANGES_REQUESTED" && state != "COMMENTED" {
+			continue
+		}
+		shownReviewers[login] = true
+
+		var stateIcon string
+		switch state {
+		case "APPROVED":
+			stateIcon = successStyle.Render(constants.ApprovedIcon)
+		case "CHANGES_REQUESTED":
+			stateIcon = errorStyle.Render(constants.ChangesRequestedIcon)
+		case "COMMENTED":
+			stateIcon = m.ctx.Styles.Common.CommentGlyph
+		}
+		reviewerStr := stateIcon + " " + reviewerStyle.Render("@"+login)
+
+		reviewerItems = append(reviewerItems, reviewerItem{text: reviewerStr})
+	}
+
+	// Show suggested reviewers (= code owners) who haven't been requested or reviewed yet
+	for _, suggested := range suggestedReviewers {
+		login := suggested.Reviewer.Login
+		if shownReviewers[login] {
+			continue
+		}
+		if suggested.IsAuthor {
+			continue
+		}
+		shownReviewers[login] = true
+
+		reviewerStr := lipgloss.JoinHorizontal(lipgloss.Top,
+			faintStyle.Render(constants.OwnerIcon), " ",
+			faintStyle.Render("@"+login),
+		)
+
+		reviewerItems = append(reviewerItems, reviewerItem{text: reviewerStr})
+	}
+
+	if len(reviewerItems) == 0 {
+		return ""
+	}
+
+	width := m.getIndentedContentWidth()
+	var rows []string
+	var currentRow strings.Builder
+	currentRowWidth := 0
+
+	for i, item := range reviewerItems {
+		itemWidth := lipgloss.Width(item.text)
+		separator := ", "
+		separatorWidth := lipgloss.Width(separator)
+
+		// Check if adding this item would exceed the width
+		needsSeparator := i < len(reviewerItems)-1
+		totalItemWidth := itemWidth
+		if needsSeparator {
+			totalItemWidth += separatorWidth
+		}
+
+		if currentRowWidth > 0 && currentRowWidth+totalItemWidth > width {
+			// Start a new row
+			rows = append(rows, currentRow.String())
+			currentRow.Reset()
+			currentRowWidth = 0
+		}
+
+		currentRow.WriteString(item.text)
+		currentRowWidth += itemWidth
+
+		if needsSeparator {
+			currentRow.WriteString(separator)
+			currentRowWidth += separatorWidth
+		}
+	}
+
+	// Add the last row
+	if currentRow.Len() > 0 {
+		rows = append(rows, currentRow.String())
+	}
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		m.ctx.Styles.Common.MainTextStyle.Underline(true).Bold(true).Render(
+			fmt.Sprintf("%s Reviewers", constants.CodeReviewIcon)),
+		"",
+		strings.Join(rows, "\n"),
 	)
 }
 
@@ -469,7 +633,7 @@ func (m *Model) SetIsCommenting(isCommenting bool) tea.Cmd {
 		m.inputBox.Reset()
 	}
 	m.isCommenting = isCommenting
-	m.inputBox.SetPrompt(commentPrompt)
+	m.inputBox.SetPrompt(constants.CommentPrompt)
 
 	if isCommenting {
 		return tea.Sequence(textarea.Blink, m.inputBox.Focus())
@@ -494,7 +658,7 @@ func (m *Model) SetIsApproving(isApproving bool) tea.Cmd {
 		m.inputBox.Reset()
 	}
 	m.isApproving = isApproving
-	m.inputBox.SetPrompt(approvalPrompt)
+	m.inputBox.SetPrompt(constants.ApprovalPrompt)
 	m.inputBox.SetValue(m.ctx.Config.Defaults.PrApproveComment)
 
 	if isApproving {
@@ -516,7 +680,7 @@ func (m *Model) SetIsAssigning(isAssigning bool) tea.Cmd {
 		m.inputBox.Reset()
 	}
 	m.isAssigning = isAssigning
-	m.inputBox.SetPrompt("Assign users (whitespace-separated)...")
+	m.inputBox.SetPrompt(constants.AssignPrompt)
 	if !m.userAssignedToPr(m.ctx.User) {
 		m.inputBox.SetValue(m.ctx.User)
 	}
@@ -549,7 +713,7 @@ func (m *Model) SetIsUnassigning(isUnassigning bool) tea.Cmd {
 		m.inputBox.Reset()
 	}
 	m.isUnassigning = isUnassigning
-	m.inputBox.SetPrompt("Unassign users (whitespace-separated)...")
+	m.inputBox.SetPrompt(constants.UnassignPrompt)
 	m.inputBox.SetValue(strings.Join(m.prAssignees(), "\n"))
 
 	if isUnassigning {
@@ -568,6 +732,14 @@ func (m *Model) prAssignees() []string {
 
 func (m *Model) GoToFirstTab() {
 	m.carousel.SetCursor(0)
+}
+
+func (m *Model) GoToActivityTab() {
+	m.carousel.SetCursor(1) // Activity is the second tab (index 1)
+}
+
+func (m Model) SelectedTab() string {
+	return m.carousel.SelectedItem()
 }
 
 func (m *Model) SetSummaryViewMore() {

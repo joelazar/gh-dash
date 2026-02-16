@@ -9,6 +9,23 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/internal/config"
 )
 
+// NotificationSubjectType indicates what type of content is being viewed in the notifications view
+type NotificationSubjectType int
+
+const (
+	NotificationSubjectNone NotificationSubjectType = iota
+	NotificationSubjectPR
+	NotificationSubjectIssue
+)
+
+// notificationSubject tracks the current notification subject type for help display
+var notificationSubject NotificationSubjectType
+
+// SetNotificationSubject sets the current notification subject type for help display
+func SetNotificationSubject(subjectType NotificationSubjectType) {
+	notificationSubject = subjectType
+}
+
 type KeyMap struct {
 	Issues        IssueKeyMap
 	Prs           PRKeyMap
@@ -55,6 +72,15 @@ func (k KeyMap) FullHelp(viewType config.ViewType) [][]key.Binding {
 	case config.NotificationsView:
 		additionalKeys = NotificationFullHelp()
 		customKeys = append(customKeys, CustomNotificationBindings...)
+		// Include PR or Issue keys when viewing that subject type
+		switch notificationSubject {
+		case NotificationSubjectPR:
+			additionalKeys = append(additionalKeys, PRFullHelp()...)
+			customKeys = append(customKeys, CustomPRBindings...)
+		case NotificationSubjectIssue:
+			additionalKeys = append(additionalKeys, IssueFullHelp()...)
+			customKeys = append(customKeys, CustomIssueBindings...)
+		}
 	}
 
 	sections := [][]key.Binding{
@@ -171,7 +197,7 @@ var Keys = KeyMap{
 		key.WithHelp("?", "help"),
 	),
 	Quit: key.NewBinding(
-		key.WithKeys("q", "esc", "ctrl+c"),
+		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q", "quit"),
 	),
 }

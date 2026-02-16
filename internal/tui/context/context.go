@@ -29,21 +29,23 @@ type Task struct {
 }
 
 type ProgramContext struct {
-	RepoPath          string
-	RepoUrl           string
-	User              string
-	ScreenHeight      int
-	ScreenWidth       int
-	MainContentWidth  int
-	MainContentHeight int
-	Config            *config.Config
-	ConfigFlag        string
-	Version           string
-	View              config.ViewType
-	Error             error
-	StartTask         func(task Task) tea.Cmd
-	Theme             theme.Theme
-	Styles            Styles
+	RepoPath            string
+	RepoUrl             string
+	User                string
+	ScreenHeight        int
+	ScreenWidth         int
+	MainContentWidth    int
+	MainContentHeight   int
+	DynamicPreviewWidth int
+	SidebarOpen         bool
+	Config              *config.Config
+	ConfigFlag          string
+	Version             string
+	View                config.ViewType
+	Error               error
+	StartTask           func(task Task) tea.Cmd
+	Theme               theme.Theme
+	Styles              Styles
 }
 
 func (ctx *ProgramContext) GetViewSectionsConfig() []config.SectionConfig {
@@ -57,16 +59,16 @@ func (ctx *ProgramContext) GetViewSectionsConfig() []config.SectionConfig {
 			Limit:   utils.IntPtr(20),
 			Type:    &t,
 		}.ToSectionConfig())
+	case config.NotificationsView:
+		for _, cfg := range ctx.Config.NotificationsSections {
+			configs = append(configs, cfg.ToSectionConfig())
+		}
 	case config.PRsView:
 		for _, cfg := range ctx.Config.PRSections {
 			configs = append(configs, cfg.ToSectionConfig())
 		}
 	case config.IssuesView:
 		for _, cfg := range ctx.Config.IssuesSections {
-			configs = append(configs, cfg.ToSectionConfig())
-		}
-	case config.NotificationsView:
-		for _, cfg := range ctx.Config.NotificationsSections {
 			configs = append(configs, cfg.ToSectionConfig())
 		}
 	}

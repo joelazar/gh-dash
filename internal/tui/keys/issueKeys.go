@@ -25,6 +25,10 @@ var IssueKeys = IssueKeyMap{
 		key.WithKeys("L"),
 		key.WithHelp("L", "label"),
 	),
+	Assign: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "assign"),
+	),
 	Unassign: key.NewBinding(
 		key.WithKeys("A"),
 		key.WithHelp("A", "unassign"),
@@ -47,7 +51,7 @@ var IssueKeys = IssueKeyMap{
 	),
 	ViewPRs: key.NewBinding(
 		key.WithKeys("s"),
-		key.WithHelp("s", "switch view"),
+		key.WithHelp("s", "switch to notifications"),
 	),
 }
 

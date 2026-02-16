@@ -2,458 +2,420 @@ package data
 
 import (
 	"fmt"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
 	gh "github.com/cli/go-gh/v2/pkg/api"
 )
 
-// GetNotificationsWithLimits fetches the first page of notifications with max limit and age filtering.
-// This is a convenience wrapper around GetNotificationsPaginatedWithCurrentCount.
-func GetNotificationsWithLimits(limit int, maxLimit int, maxAgeDays int, query ...string) ([]Notification, error) {
-	result, err := GetNotificationsPaginatedWithCurrentCount(1, limit, maxLimit, maxAgeDays, 0, query...)
-	return result, err
+// Notification subject types from GitHub API
+const (
+	SubjectTypePullRequest = "PullRequest"
+	SubjectTypeIssue       = "Issue"
+	SubjectTypeDiscussion  = "Discussion"
+	SubjectTypeRelease     = "Release"
+	SubjectTypeCommit      = "Commit"
+	SubjectTypeCheckSuite  = "CheckSuite"
+)
+
+// Notification reasons from GitHub API
+const (
+	ReasonSubscribed      = "subscribed"
+	ReasonReviewRequested = "review_requested"
+	ReasonMention         = "mention"
+	ReasonAuthor          = "author"
+	ReasonComment         = "comment"
+	ReasonAssign          = "assign"
+	ReasonStateChange     = "state_change"
+	ReasonCIActivity      = "ci_activity"
+	ReasonTeamMention     = "team_mention"
+	ReasonSecurityAlert   = "security_alert"
+)
+
+var restClient *gh.RESTClient
+
+type NotificationSubject struct {
+	Title            string `json:"title"`
+	Url              string `json:"url"`
+	LatestCommentUrl string `json:"latest_comment_url"`
+	Type             string `json:"type"` // PullRequest, Issue, Discussion, Release, etc.
 }
 
-// GetNotificationsPaginated fetches a page of notifications without max limit or age filtering.
-// Use this for simple pagination without enforcing limits.
-func GetNotificationsPaginated(page, perPage int, query ...string) ([]Notification, error) {
-	// Parse query to determine API parameters and client-side filters
-	queryStr := ""
-	if len(query) > 0 {
-		queryStr = query[0]
-	}
-
-	// If there's a repo filter, we need to potentially fetch multiple pages
-	// to get enough matching results
-	if queryStr != "" && containsRepoFilter(queryStr) {
-		result, err := getNotificationsWithRepoFilter(page, perPage, queryStr)
-		return result, err
-	}
-
-	// For queries without repo filters, use the simpler single-page approach
-	result, err := getNotificationsSinglePage(page, perPage, queryStr)
-	return result, err
+type NotificationRepository struct {
+	Id       int    `json:"id"`
+	Name     string `json:"name"`
+	FullName string `json:"full_name"`
+	Private  bool   `json:"private"`
+	Owner    struct {
+		Login string `json:"login"`
+	} `json:"owner"`
+	HtmlUrl string `json:"html_url"`
 }
 
-// GetNotificationsPaginatedWithCurrentCount fetches notifications with max limit enforcement
-// based on the current count (after deduplication). This is the most flexible function
-// for paginated fetching with limits and age filtering.
-func GetNotificationsPaginatedWithCurrentCount(page, perPage int, maxLimit int, maxAgeDays int, currentCount int, query ...string) ([]Notification, error) {
-	log.Debug("GetNotificationsPaginatedWithCurrentCount start", "page", page, "perPage", perPage, "maxLimit", maxLimit, "maxAgeDays", maxAgeDays, "currentCount", currentCount, "query", query)
+type NotificationData struct {
+	Id           string                 `json:"id"`
+	Unread       bool                   `json:"unread"`
+	Reason       string                 `json:"reason"` // subscribed, review_requested, mention, etc.
+	UpdatedAt    time.Time              `json:"updated_at"`
+	LastReadAt   *time.Time             `json:"last_read_at"`
+	Subject      NotificationSubject    `json:"subject"`
+	Repository   NotificationRepository `json:"repository"`
+	Url          string                 `json:"url"`
+	Subscription string                 `json:"subscription_url"`
+}
 
-	// Apply max limit enforcement based on actual current count (after deduplication)
-	effectiveLimit := perPage
-	if maxLimit > 0 {
-		remainingLimit := maxLimit - currentCount
-		if remainingLimit <= 0 {
-			return []Notification{}, nil
-		}
-		if remainingLimit < perPage {
-			effectiveLimit = remainingLimit
-		}
+func (n NotificationData) GetTitle() string {
+	return n.Subject.Title
+}
+
+func (n NotificationData) GetRepoNameWithOwner() string {
+	return n.Repository.FullName
+}
+
+func (n NotificationData) GetNumber() int {
+	// Notifications don't have a number, return 0
+	return 0
+}
+
+func (n NotificationData) GetUrl() string {
+	// Convert API URL to HTML URL
+	// API URL: https://api.github.com/repos/owner/repo/pulls/123
+	// HTML URL: https://github.com/owner/repo/pull/123
+	return fmt.Sprintf("https://github.com/%s", n.Repository.FullName)
+}
+
+func (n NotificationData) GetUpdatedAt() time.Time {
+	return n.UpdatedAt
+}
+
+func (n NotificationData) GetCreatedAt() time.Time {
+	// Notifications don't have a created_at, use updated_at
+	return n.UpdatedAt
+}
+
+type NotificationsResponse struct {
+	Notifications []NotificationData
+	TotalCount    int
+	PageInfo      PageInfo
+}
+
+func getRESTClient() (*gh.RESTClient, error) {
+	if restClient != nil {
+		return restClient, nil
 	}
-
-	// Parse query to determine API parameters and client-side filters
-	queryStr := ""
-	if len(query) > 0 {
-		queryStr = query[0]
-	}
-
-	var notifications []Notification
 	var err error
-
-	// If there's a repo filter, we need to potentially fetch multiple pages
-	// to get enough matching results
-	if queryStr != "" && containsRepoFilter(queryStr) {
-		notifications, err = getNotificationsWithRepoFilter(page, effectiveLimit, queryStr)
-	} else {
-		// For queries without repo filters, use the simpler single-page approach
-		notifications, err = getNotificationsSinglePage(page, effectiveLimit, queryStr)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Apply age filtering if specified
-	if maxAgeDays > 0 {
-		notifications = filterNotificationsByAge(notifications, maxAgeDays)
-	}
-
-	return notifications, nil
+	restClient, err = gh.DefaultRESTClient()
+	return restClient, err
 }
 
-// getNotificationsSinglePage fetches a single page of notifications (original logic)
-func getNotificationsSinglePage(page, perPage int, queryStr string) ([]Notification, error) {
-	client, err := gh.DefaultRESTClient()
+// NotificationReadState represents the read state filter for notifications
+type NotificationReadState string
+
+const (
+	NotificationStateUnread NotificationReadState = "unread" // Only unread (default)
+	NotificationStateRead   NotificationReadState = "read"   // Only read
+	NotificationStateAll    NotificationReadState = "all"    // Both read and unread
+)
+
+func FetchNotifications(limit int, repoFilters []string, readState NotificationReadState, pageInfo *PageInfo) (NotificationsResponse, error) {
+	client, err := getRESTClient()
 	if err != nil {
-		log.Debug("getNotificationsSinglePage: failed to create client", "err", err)
-		return nil, err
+		return NotificationsResponse{}, err
 	}
 
-	var response []struct {
-		ID         string `json:"id"`
-		Repository struct {
-			FullName string `json:"full_name"`
-		}
-		Subject struct {
-			Title string `json:"title"`
-			URL   string `json:"url"`
-			Type  string `json:"type"`
-		}
-		Reason    string    `json:"reason"`
-		Unread    bool      `json:"unread"`
-		UpdatedAt time.Time `json:"updated_at"`
+	var allNotifications []NotificationData
+
+	// Build query params
+	// all=true returns both read and unread notifications
+	includeAll := readState == NotificationStateRead || readState == NotificationStateAll
+	allParam := ""
+	if includeAll {
+		allParam = "&all=true"
 	}
 
-	// Build query parameters
-	params := url.Values{}
+	// Determine page number from PageInfo (EndCursor stores the current page as string)
+	page := 1
+	if pageInfo != nil && pageInfo.EndCursor != "" {
+		fmt.Sscanf(pageInfo.EndCursor, "%d", &page)
+	}
 
-	// Handle is:unread filter by setting the 'all' parameter
-	if strings.Contains(queryStr, "is:unread") {
-		params.Add("all", "false")
+	if len(repoFilters) == 0 {
+		// No repo filter, fetch all notifications
+		path := fmt.Sprintf("notifications?per_page=%d&page=%d%s", limit, page, allParam)
+		log.Debug("Fetching notifications", "limit", limit, "page", page, "readState", readState)
+		err = client.Get(path, &allNotifications)
+		if err != nil {
+			return NotificationsResponse{}, err
+		}
 	} else {
-		params.Add("all", "true")
-	}
-
-	params.Add("page", fmt.Sprintf("%d", page))
-	params.Add("per_page", fmt.Sprintf("%d", perPage))
-
-	endpoint := "notifications?" + params.Encode()
-	log.Debug("getNotificationsSinglePage: calling API endpoint", "endpoint", endpoint)
-
-	if err := client.Get(endpoint, &response); err != nil {
-		log.Debug("getNotificationsSinglePage: API call failed", "err", err)
-		return nil, fmt.Errorf("failed to get notifications: %w", err)
-	}
-
-	log.Debug("getNotificationsSinglePage: received notifications", "count", len(response))
-
-	// Handle potential empty response
-	if response == nil {
-		response = []struct {
-			ID         string `json:"id"`
-			Repository struct {
-				FullName string `json:"full_name"`
-			}
-			Subject struct {
-				Title string `json:"title"`
-				URL   string `json:"url"`
-				Type  string `json:"type"`
-			}
-			Reason    string    `json:"reason"`
-			Unread    bool      `json:"unread"`
-			UpdatedAt time.Time `json:"updated_at"`
-		}{}
-	}
-
-	notifications := make([]Notification, 0, len(response))
-	for _, n := range response {
-		notification := Notification{
-			ID:         n.ID,
-			Title:      n.Subject.Title,
-			Type:       n.Subject.Type,
-			Repository: n.Repository.FullName,
-			Reason:     Reason(n.Reason),
-			Unread:     n.Unread,
-			UpdatedAt:  n.UpdatedAt,
-			URL:        convertURL(n.Subject.URL),
-			ThreadID:   n.ID,
-			Subscribed: true,
-		}
-
-		notifications = append(notifications, notification)
-	}
-
-	return notifications, nil
-}
-
-// getNotificationsWithRepoFilter fetches multiple pages if needed to fill the requested limit
-func getNotificationsWithRepoFilter(requestedPage, perPage int, queryStr string) ([]Notification, error) {
-	log.Debug("getNotificationsWithRepoFilter: starting multi-page fetch", "requestedPage", requestedPage, "perPage", perPage)
-
-	client, err := gh.DefaultRESTClient()
-	if err != nil {
-		log.Debug("getNotificationsWithRepoFilter: failed to create client", "err", err)
-		return nil, err
-	}
-
-	var filteredNotifications []Notification
-	currentPage := 1
-	maxPages := 10 // Safety limit to prevent infinite loops
-
-	if requestedPage == 1 {
-		for len(filteredNotifications) < perPage && currentPage <= maxPages {
-			// Fetch this page
-			notifications, hasMore, err := fetchSingleNotificationPage(client, currentPage, perPage, queryStr)
+		// Fetch notifications for each repo and combine
+		for _, repo := range repoFilters {
+			var repoNotifications []NotificationData
+			path := fmt.Sprintf("repos/%s/notifications?per_page=%d&page=%d%s", repo, limit, page, allParam)
+			log.Debug("Fetching notifications for repo", "repo", repo, "limit", limit, "page", page, "readState", readState)
+			err = client.Get(path, &repoNotifications)
 			if err != nil {
-				return nil, err
+				log.Warn("Failed to fetch notifications for repo", "repo", repo, "err", err)
+				continue
 			}
-
-			// Filter the notifications from this page
-			filteredFromThisPage := filterNotificationsByRepo(notifications, queryStr)
-			filteredNotifications = append(filteredNotifications, filteredFromThisPage...)
-
-			// If this page didn't return a full set of results, we've reached the end
-			if !hasMore {
-				break
-			}
-
-			currentPage++
+			allNotifications = append(allNotifications, repoNotifications...)
 		}
-
-		// Return up to perPage results
-		if len(filteredNotifications) > perPage {
-			result := filteredNotifications[:perPage]
-			return result, nil
-		}
-		return filteredNotifications, nil
 	}
 
-	// For pages > 1, fall back to single page for now
-	notifications, _, err := fetchSingleNotificationPage(client, requestedPage, perPage, queryStr)
+	// Determine if there's a next page BEFORE filtering (based on raw API response count).
+	// If the API returned a full page, there are likely more notifications on the server.
+	// We must check this before filtering because the caller needs accurate pagination info
+	// to fetch additional pages when many notifications are filtered out locally.
+	rawCount := len(allNotifications)
+	hasNextPage := rawCount >= limit
+	nextPage := fmt.Sprintf("%d", page+1)
+
+	// Filter by read state if needed
+	switch readState {
+	case NotificationStateRead:
+		// Keep only read notifications
+		filtered := make([]NotificationData, 0)
+		for _, n := range allNotifications {
+			if !n.Unread {
+				filtered = append(filtered, n)
+			}
+		}
+		allNotifications = filtered
+	case NotificationStateUnread:
+		// Keep only unread notifications (API default, but filter just in case)
+		filtered := make([]NotificationData, 0)
+		for _, n := range allNotifications {
+			if n.Unread {
+				filtered = append(filtered, n)
+			}
+		}
+		allNotifications = filtered
+	case NotificationStateAll:
+		// Keep all, no filtering needed
+	}
+
+	log.Info("Successfully fetched notifications", "rawCount", rawCount, "filteredCount", len(allNotifications), "page", page, "hasNextPage", hasNextPage, "readState", readState)
+
+	return NotificationsResponse{
+		Notifications: allNotifications,
+		TotalCount:    len(allNotifications),
+		PageInfo: PageInfo{
+			HasNextPage: hasNextPage,
+			EndCursor:   nextPage,
+		},
+	}, nil
+}
+
+// FetchNotificationByThreadId fetches a single notification by its thread ID.
+// This is useful for fetching bookmarked or session-marked-read notifications
+// that may not appear in the regular notifications list.
+func FetchNotificationByThreadId(threadId string) (*NotificationData, error) {
+	client, err := getRESTClient()
 	if err != nil {
 		return nil, err
 	}
 
-	result := filterNotificationsByRepo(notifications, queryStr)
-	return result, nil
-}
+	path := fmt.Sprintf("notifications/threads/%s", threadId)
+	log.Debug("Fetching notification by thread ID", "threadId", threadId)
 
-// fetchSingleNotificationPage fetches a single page and returns whether there are more pages
-func fetchSingleNotificationPage(client *gh.RESTClient, page, perPage int, queryStr string) ([]Notification, bool, error) {
-	var response []struct {
-		ID         string `json:"id"`
-		Repository struct {
-			FullName string `json:"full_name"`
-		}
-		Subject struct {
-			Title string `json:"title"`
-			URL   string `json:"url"`
-			Type  string `json:"type"`
-		}
-		Reason    string    `json:"reason"`
-		Unread    bool      `json:"unread"`
-		UpdatedAt time.Time `json:"updated_at"`
-	}
-
-	// Build query parameters
-	params := url.Values{}
-
-	// Handle is:unread filter by setting the 'all' parameter
-	if strings.Contains(queryStr, "is:unread") {
-		params.Add("all", "false")
-	} else {
-		params.Add("all", "true")
-	}
-
-	params.Add("page", fmt.Sprintf("%d", page))
-	params.Add("per_page", fmt.Sprintf("%d", perPage))
-
-	endpoint := "notifications?" + params.Encode()
-
-	if err := client.Get(endpoint, &response); err != nil {
-		return nil, false, fmt.Errorf("failed to get notifications: %w", err)
-	}
-
-	// Handle potential empty response
-	if response == nil {
-		return []Notification{}, false, nil
-	}
-
-	notifications := make([]Notification, 0, len(response))
-	for _, n := range response {
-		notification := Notification{
-			ID:         n.ID,
-			Title:      n.Subject.Title,
-			Type:       n.Subject.Type,
-			Repository: n.Repository.FullName,
-			Reason:     Reason(n.Reason),
-			Unread:     n.Unread,
-			UpdatedAt:  n.UpdatedAt,
-			URL:        convertURL(n.Subject.URL),
-			ThreadID:   n.ID,
-			Subscribed: true,
-		}
-
-		notifications = append(notifications, notification)
-	}
-
-	// If we got exactly perPage results, assume there might be more pages
-	hasMore := len(response) == perPage
-
-	return notifications, hasMore, nil
-}
-
-// containsRepoFilter checks if the query contains a repo filter
-func containsRepoFilter(query string) bool {
-	tokens := strings.Fields(query)
-	for _, token := range tokens {
-		if strings.HasPrefix(token, "repo:") {
-			return true
-		}
-	}
-	return false
-}
-
-// filterNotificationsByRepo applies repo filtering to notifications
-func filterNotificationsByRepo(notifications []Notification, query string) []Notification {
-	// Extract repo filter from query
-	repoFilter := ""
-	tokens := strings.Fields(query)
-	for _, token := range tokens {
-		if strings.HasPrefix(token, "repo:") {
-			repoFilter = strings.TrimPrefix(token, "repo:")
-			break
-		}
-	}
-
-	if repoFilter == "" {
-		return notifications
-	}
-
-	// Filter notifications by repository
-	filtered := make([]Notification, 0, len(notifications))
-	for _, notification := range notifications {
-		if strings.Contains(notification.Repository, repoFilter) {
-			filtered = append(filtered, notification)
-		}
-	}
-
-	return filtered
-}
-
-func MarkNotificationAsRead(threadID string) error {
-	log.Debug("MarkNotificationAsRead", "threadID", threadID)
-
-	client, err := gh.DefaultRESTClient()
+	var notification NotificationData
+	err = client.Get(path, &notification)
 	if err != nil {
-		log.Debug("MarkNotificationAsRead: failed to create client", "err", err)
+		return nil, err
+	}
+
+	return &notification, nil
+}
+
+func MarkNotificationDone(threadId string) error {
+	client, err := getRESTClient()
+	if err != nil {
 		return err
 	}
 
-	endpoint := fmt.Sprintf("notifications/threads/%s", threadID)
-	log.Debug("MarkNotificationAsRead: calling PATCH", "endpoint", endpoint)
+	path := fmt.Sprintf("notifications/threads/%s", threadId)
+	log.Debug("Marking notification as done", "threadId", threadId)
 
-	// GitHub returns 205 Reset Content for successful mark-as-read, with no body
-	// The go-gh library's Patch method tries to parse JSON, causing an EOF error
-	// See: https://github.com/cli/go-gh/pull/163
-	err = client.Patch(endpoint, nil, nil)
+	// DELETE marks as done
+	err = client.Delete(path, nil)
 	if err != nil {
-		errMsg := err.Error()
-		// Ignore EOF-related errors that occur when parsing empty 205 responses
-		if !strings.Contains(errMsg, "unexpected end of JSON input") &&
-			!strings.Contains(errMsg, "EOF") {
-			log.Error("MarkNotificationAsRead: PATCH failed", "err", err)
-			return err
-		}
-		log.Debug("MarkNotificationAsRead: ignoring expected EOF error from empty 205 response")
+		return err
 	}
-
-	log.Debug("MarkNotificationAsRead: successfully marked as read")
-
+	log.Info("Successfully marked notification as done", "threadId", threadId)
 	return nil
 }
 
-// Removed unused, commented-out functions for subscribe/unsubscribe
-
-// MarkNotificationAsDone marks a notification as done using the official API
-func MarkNotificationAsDone(threadID string) error {
-	log.Debug("MarkNotificationAsDone", "threadID", threadID)
-
-	client, err := gh.DefaultRESTClient()
+func MarkNotificationRead(threadId string) error {
+	client, err := getRESTClient()
 	if err != nil {
-		log.Debug("MarkNotificationAsDone: failed to create client", "err", err)
 		return err
 	}
 
-	endpoint := fmt.Sprintf("notifications/threads/%s", threadID)
-	log.Debug("MarkNotificationAsDone: calling DELETE", "endpoint", endpoint)
+	path := fmt.Sprintf("notifications/threads/%s", threadId)
+	log.Debug("Marking notification as read", "threadId", threadId)
 
-	// GitHub returns 204 No Content for successful mark-as-done, with no body
-	// Use nil response to avoid JSON parsing empty body
-	err = client.Delete(endpoint, nil)
-	if err != nil {
-		log.Debug("MarkNotificationAsDone: DELETE failed", "err", err)
+	// PATCH marks as read - returns 205 Reset Content with no body
+	// The REST client may return an error trying to parse the empty response
+	err = client.Patch(path, nil, nil)
+	if err != nil && err.Error() != "unexpected end of JSON input" {
 		return err
 	}
-
-	log.Debug("MarkNotificationAsDone: successfully marked as done")
+	log.Info("Successfully marked notification as read", "threadId", threadId)
 	return nil
 }
 
-// filterNotificationsByAge filters notifications based on maximum age in days
-func filterNotificationsByAge(notifications []Notification, maxAgeDays int) []Notification {
-	if maxAgeDays <= 0 {
-		return notifications
+func UnsubscribeFromThread(threadId string) error {
+	client, err := getRESTClient()
+	if err != nil {
+		return err
 	}
 
-	cutoffTime := time.Now().AddDate(0, 0, -maxAgeDays)
-	filtered := make([]Notification, 0, len(notifications))
+	log.Debug("Unsubscribing from notification thread", "threadId", threadId)
 
-	for _, notification := range notifications {
-		if notification.UpdatedAt.After(cutoffTime) {
-			filtered = append(filtered, notification)
-		}
+	// DELETE /notifications/threads/{thread_id}/subscription
+	// Mutes all future notifications for a conversation until you comment on the thread or get an @mention
+	path := fmt.Sprintf("notifications/threads/%s/subscription", threadId)
+	err = client.Delete(path, nil)
+	if err != nil && err.Error() != "unexpected end of JSON input" {
+		return err
 	}
-
-	log.Debug("filterNotificationsByAge", "original", len(notifications), "filtered", len(filtered), "maxAgeDays", maxAgeDays)
-	return filtered
+	log.Info("Successfully unsubscribed from thread", "threadId", threadId)
+	return nil
 }
 
-func convertURL(apiURL string) string {
-	if apiURL == "" {
-		return ""
-	}
-	parsedURL, err := url.Parse(apiURL)
+func MarkAllNotificationsRead() error {
+	client, err := getRESTClient()
 	if err != nil {
-		return ""
+		return err
 	}
 
-	// Example API URLs:
-	// https://api.github.com/repos/owner/repo/issues/123
-	// https://api.github.com/repos/owner/repo/pulls/456
-	// https://api.github.com/repos/owner/repo/commits/sha
-	// https://api.github.com/repos/owner/repo/discussions/123
+	log.Debug("Marking all notifications as read")
 
-	parts := strings.Split(parsedURL.Path, "/")
-	// parts[0] is "", parts[1] is "repos", parts[2] is owner, parts[3] is repo, parts[4] is type, parts[5] is number/sha
-	if len(parts) < 6 {
-		// Handle shorter paths, fallback to repo page if we have at least owner/repo
-		if len(parts) >= 4 {
-			return fmt.Sprintf("https://github.com/%s/%s", parts[2], parts[3])
+	// PUT /notifications marks all as read - returns 205 Reset Content with no body
+	// The REST client may return an error trying to parse the empty response
+	err = client.Put("notifications", nil, nil)
+	if err != nil && err.Error() != "unexpected end of JSON input" {
+		return err
+	}
+	log.Info("Successfully marked all notifications as read")
+	return nil
+}
+
+// CommentResponse represents a GitHub comment with author info
+type CommentResponse struct {
+	User struct {
+		Login string `json:"login"`
+	} `json:"user"`
+}
+
+// WorkflowRun represents a GitHub Actions workflow run
+type WorkflowRun struct {
+	Id         int64     `json:"id"`
+	Name       string    `json:"name"`
+	HtmlUrl    string    `json:"html_url"`
+	HeadBranch string    `json:"head_branch"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	Conclusion string    `json:"conclusion"` // success, failure, cancelled, etc.
+}
+
+// WorkflowRunsResponse represents the response from the workflow runs API
+type WorkflowRunsResponse struct {
+	TotalCount   int           `json:"total_count"`
+	WorkflowRuns []WorkflowRun `json:"workflow_runs"`
+}
+
+// FetchCommentAuthor fetches the author of a comment from its API URL
+// apiUrl is like: https://api.github.com/repos/owner/repo/issues/comments/123456
+func FetchCommentAuthor(apiUrl string) (string, error) {
+	if apiUrl == "" {
+		return "", nil
+	}
+
+	client, err := getRESTClient()
+	if err != nil {
+		return "", err
+	}
+
+	// Extract the path from the full URL
+	const apiPrefix = "https://api.github.com/"
+	path := apiUrl
+	if len(apiUrl) > len(apiPrefix) && apiUrl[:len(apiPrefix)] == apiPrefix {
+		path = apiUrl[len(apiPrefix):]
+	}
+
+	var response CommentResponse
+	err = client.Get(path, &response)
+	if err != nil {
+		log.Debug("Failed to fetch comment author", "url", apiUrl, "err", err)
+		return "", err
+	}
+
+	return response.User.Login, nil
+}
+
+// FindBestWorkflowRunMatch finds the workflow run closest in time to the notification.
+// Returns nil if no suitable match is found within the time window.
+// Exported for testing.
+func FindBestWorkflowRunMatch(runs []WorkflowRun, notificationUpdatedAt time.Time) *WorkflowRun {
+	if len(runs) == 0 {
+		return nil
+	}
+
+	var bestMatch *WorkflowRun
+	bestDiff := time.Hour * 24 * 365 // Start with a large value
+
+	for i := range runs {
+		run := &runs[i]
+		diff := notificationUpdatedAt.Sub(run.UpdatedAt)
+		if diff < 0 {
+			diff = -diff
 		}
-		return ""
+
+		// Prefer runs that are close in time (within a reasonable window)
+		if diff < bestDiff && diff < time.Hour {
+			bestDiff = diff
+			bestMatch = run
+		}
 	}
 
-	owner := parts[2]
-	repo := parts[3]
-	resourceType := parts[4]
-	identifier := parts[5]
-
-	switch resourceType {
-	case "issues":
-		return fmt.Sprintf("https://github.com/%s/%s/issues/%s", owner, repo, identifier)
-	case "pulls":
-		// Note: GitHub URLs use "pull" (singular) for pull requests
-		return fmt.Sprintf("https://github.com/%s/%s/pull/%s", owner, repo, identifier)
-	case "commits":
-		return fmt.Sprintf("https://github.com/%s/%s/commit/%s", owner, repo, identifier)
-	case "discussions":
-		return fmt.Sprintf("https://github.com/%s/%s/discussions/%s", owner, repo, identifier)
-	case "releases":
-		return fmt.Sprintf("https://github.com/%s/%s/releases/tag/%s", owner, repo, identifier)
-	default:
-		// Log unknown resource types to help identify gaps in URL conversion
-		log.Debug("convertURL: unknown resource type, falling back to repo page",
-			"resourceType", resourceType,
-			"owner", owner,
-			"repo", repo,
-			"identifier", identifier,
-			"originalURL", apiURL)
-		return fmt.Sprintf("https://github.com/%s/%s", owner, repo)
+	// If no close match, just return the most recent run
+	if bestMatch == nil {
+		bestMatch = &runs[0]
 	}
+
+	return bestMatch
+}
+
+// FetchRecentWorkflowRun fetches recent workflow runs for a repo and finds the best match
+// based on the notification's updated_at timestamp. Returns the HTML URL of the matching run.
+// The title parameter is the notification subject title (e.g., "CI / build (push)")
+// which may help identify the correct workflow run.
+func FetchRecentWorkflowRun(repo string, notificationUpdatedAt time.Time, title string) (string, error) {
+	client, err := getRESTClient()
+	if err != nil {
+		return "", err
+	}
+
+	// Fetch recent workflow runs (limit to 20 for performance)
+	path := fmt.Sprintf("repos/%s/actions/runs?per_page=20", repo)
+	log.Debug("Fetching workflow runs", "repo", repo, "path", path)
+
+	var response WorkflowRunsResponse
+	err = client.Get(path, &response)
+	if err != nil {
+		log.Debug("Failed to fetch workflow runs", "repo", repo, "err", err)
+		return "", err
+	}
+
+	if len(response.WorkflowRuns) == 0 {
+		return "", nil
+	}
+
+	bestMatch := FindBestWorkflowRunMatch(response.WorkflowRuns, notificationUpdatedAt)
+	if bestMatch != nil {
+		log.Debug("Found matching workflow run", "id", bestMatch.Id, "name", bestMatch.Name, "url", bestMatch.HtmlUrl)
+		return bestMatch.HtmlUrl, nil
+	}
+
+	return "", nil
 }
