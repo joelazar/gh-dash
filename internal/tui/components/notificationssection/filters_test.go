@@ -1,6 +1,7 @@
 package notificationssection
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/dlvhdr/gh-dash/v4/internal/data"
@@ -606,6 +607,65 @@ func TestParseNotificationFiltersIncludeRead(t *testing.T) {
 					filters.ExplicitUnread,
 					tt.wantExplicitUnread,
 				)
+			}
+		})
+	}
+}
+
+func TestParseOrgFilters(t *testing.T) {
+	tests := []struct {
+		name         string
+		search       string
+		wantIncluded []string
+		wantExcluded []string
+	}{
+		{name: "no org filter", search: "is:unread reason:mention"},
+		{name: "single org", search: "org:dlvhdr", wantIncluded: []string{"dlvhdr"}},
+		{name: "excluded org", search: "-org:Spam", wantExcluded: []string{"spam"}},
+		{
+			name:         "mixed with other filters",
+			search:       "is:unread org:a -org:b org:c reason:author",
+			wantIncluded: []string{"a", "c"},
+			wantExcluded: []string{"b"},
+		},
+		{name: "embedded org: is not a filter", search: "fooorg:x", wantIncluded: nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			included, excluded := parseOrgFilters(tt.search)
+			if !slices.Equal(included, tt.wantIncluded) {
+				t.Errorf("included = %v, want %v", included, tt.wantIncluded)
+			}
+			if !slices.Equal(excluded, tt.wantExcluded) {
+				t.Errorf("excluded = %v, want %v", excluded, tt.wantExcluded)
+			}
+		})
+	}
+}
+
+func TestMatchesOrg(t *testing.T) {
+	tests := []struct {
+		name   string
+		search string
+		owner  string
+		want   bool
+	}{
+		{name: "no filters matches all", search: "", owner: "anyone", want: true},
+		{name: "included org matches", search: "org:dlvhdr", owner: "dlvhdr", want: true},
+		{name: "match is case-insensitive", search: "org:DLVHDR", owner: "Dlvhdr", want: true},
+		{name: "other org excluded by include", search: "org:dlvhdr", owner: "other", want: false},
+		{name: "any of multiple includes", search: "org:a org:b", owner: "b", want: true},
+		{name: "excluded org rejected", search: "-org:spam", owner: "spam", want: false},
+		{name: "non-excluded org kept", search: "-org:spam", owner: "dlvhdr", want: true},
+		{name: "exclude wins over include", search: "org:a -org:a", owner: "a", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filters := parseNotificationFilters(tt.search, true)
+			if got := filters.matchesOrg(tt.owner); got != tt.want {
+				t.Errorf("matchesOrg(%q) with %q = %v, want %v", tt.owner, tt.search, got, tt.want)
 			}
 		})
 	}

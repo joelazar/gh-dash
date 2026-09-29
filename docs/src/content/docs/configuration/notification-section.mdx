@@ -90,6 +90,13 @@ This setting defines the filters for notifications in the section's table. Notif
 |--------|-------------|
 | `repo:owner/name` | Show notifications only from the specified repository |
 
+#### Organization Filters
+
+| Filter | Description |
+|--------|-------------|
+| `org:name` | Show notifications only from repositories owned by `name` (repeat to allow several) |
+| `-org:name` | Hide notifications from repositories owned by `name` |
+
 ### Filter Examples
 
 ```yaml
@@ -105,6 +112,10 @@ This setting defines the filters for notifications in the section's table. Notif
 - title: Participating
   filters: "reason:participating"
 
+# Hide notifications from a noisy org
+- title: Not Work
+  filters: "-org:mycompany"
+
 # Combine multiple reason filters
 - title: Review & Mentions
   filters: "reason:review-requested reason:mention"
@@ -114,7 +125,7 @@ This setting defines the filters for notifications in the section's table. Notif
 
 - **Default behavior**: With no filters or empty filters, the section shows all notifications (both read and unread), matching GitHub's default behavior. To show only unread notifications by default, set `includeReadNotifications: false` in your config.
 - **Explicit `is:unread`**: Shows only unread notifications, excluding bookmarked read notifications. This overrides the `includeReadNotifications` setting.
-- **Reason filters**: Applied client-side after fetching from GitHub's API
+- **Reason and org filters**: Applied client-side after fetching from GitHub's API. Org names match case-insensitively; `-org:` wins over `org:`
 
 ## Notification Fetch Limit (`limit`)
 
