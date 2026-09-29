@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +35,8 @@ var stateFilterRegex = regexp.MustCompile(`is:(unread|read|done|all)`)
 // reasonFilterRegex matches "reason:value" patterns in search strings
 var reasonFilterRegex = regexp.MustCompile(`reason:([^\s]+)`)
 
+var orgFilterRegex = regexp.MustCompile(`(?:^|\s)(-?)org:([^\s]+)`)
+
 // parseRepoFilters extracts repo:owner/name patterns from a search string
 func parseRepoFilters(search string) []string {
 	matches := repoFilterRegex.FindAllStringSubmatch(search, -1)
@@ -50,6 +53,8 @@ func parseRepoFilters(search string) []string {
 type NotificationFilters struct {
 	RepoFilters       []string
 	ReasonFilters     []string // Notification reasons to filter by (e.g., "author", "mention")
+	OrgFilters        []string
+	ExcludedOrgs      []string
 	ReadState         data.NotificationReadState
 	IsDone            bool // If true, user asked for is:done which is not retrievable
 	ExplicitUnread    bool // If true, user explicitly typed "is:unread" (excludes bookmarked+read)
@@ -96,6 +101,26 @@ func parseReasonFilters(search string) []string {
 	return reasons
 }
 
+func parseOrgFilters(search string) (included []string, excluded []string) {
+	for _, match := range orgFilterRegex.FindAllStringSubmatch(search, -1) {
+		org := strings.ToLower(match[2])
+		if match[1] == "-" {
+			excluded = append(excluded, org)
+		} else {
+			included = append(included, org)
+		}
+	}
+	return included, excluded
+}
+
+func (f NotificationFilters) matchesOrg(owner string) bool {
+	owner = strings.ToLower(owner)
+	if slices.Contains(f.ExcludedOrgs, owner) {
+		return false
+	}
+	return len(f.OrgFilters) == 0 || slices.Contains(f.OrgFilters, owner)
+}
+
 // parseNotificationFilters extracts all notification filters from search string.
 // When includeRead is true (the default config), the default read state is "all"
 // instead of "unread", matching GitHub's default behavior.
@@ -104,9 +129,12 @@ func parseNotificationFilters(search string, includeRead bool) NotificationFilte
 	if includeRead {
 		defaultReadState = data.NotificationStateAll
 	}
+	orgFilters, excludedOrgs := parseOrgFilters(search)
 	filters := NotificationFilters{
 		RepoFilters:       parseRepoFilters(search),
 		ReasonFilters:     parseReasonFilters(search),
+		OrgFilters:        orgFilters,
+		ExcludedOrgs:      excludedOrgs,
 		ReadState:         defaultReadState,
 		IsDone:            false,
 		ExplicitUnread:    false,
@@ -758,6 +786,10 @@ func (m *Model) FetchNextPageSectionRows() []tea.Cmd {
 				// Apply reason filter if specified (O(1) map lookup)
 				if include && len(reasonFilterMap) > 0 {
 					include = reasonFilterMap[n.Reason]
+				}
+
+				if include {
+					include = filters.matchesOrg(n.Repository.Owner.Login)
 				}
 
 				if include {

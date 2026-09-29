@@ -370,7 +370,7 @@ Like PRs and Issues, the Notifications view includes a search section (indicated
 - Default filter: `archived:false`
 - Respects `smartFilteringAtLaunch`: when enabled and running from a git repository, the search automatically scopes to that repo
 - Use the `/` key to focus the search bar and enter custom queries
-- Supports all notification filters: `is:unread`, `is:read`, `repo:owner/name`, `reason:*`
+- Supports all notification filters: `is:unread`, `is:read`, `repo:owner/name`, `reason:*`, `org:name`, `-org:name`
 
 ### Notification Sections
 
