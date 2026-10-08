@@ -113,6 +113,15 @@ func parseOrgFilters(search string) (included []string, excluded []string) {
 	return included, excluded
 }
 
+// streamKey identifies sections that read the same GitHub API stream and differ only in local filters
+func (f NotificationFilters) streamKey() string {
+	return strings.Join(f.RepoFilters, ",") + "|" + string(f.ReadState)
+}
+
+func (m *Model) filters() NotificationFilters {
+	return parseNotificationFilters(m.GetSearchValue(), m.Ctx.Config.IncludeReadNotifications)
+}
+
 func (f NotificationFilters) matchesOrg(owner string) bool {
 	owner = strings.ToLower(owner)
 	if slices.Contains(f.ExcludedOrgs, owner) {
@@ -413,25 +422,37 @@ func (m *Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		}
 
 	case SectionNotificationsFetchedMsg:
-		if m.LastFetch.TaskId == msg.TaskId {
-			if m.PageInfo != nil {
-				// Append to existing notifications (pagination)
-				m.Notifications = append(m.Notifications, msg.Notifications...)
-			} else {
-				// First page, replace
-				m.Notifications = msg.Notifications
-			}
-			m.TotalCount = len(m.Notifications)
-			m.PageInfo = &msg.PageInfo
-			m.SetIsLoading(false)
-			m.Table.SetRows(m.BuildRows())
-			m.UpdateLastUpdated(time.Now())
-			m.UpdateTotalItemsCount(m.TotalCount)
-
-			// Start background fetches for comment counts (only for new notifications)
-			fetchCmds := m.fetchCommentCountsForNotifications(msg.Notifications)
-			cmd = tea.Batch(fetchCmds...)
+		filters := m.filters()
+		if filters.IsDone || filters.streamKey() != msg.StreamKey {
+			break
 		}
+		cursor := ""
+		if m.PageInfo != nil {
+			cursor = m.PageInfo.EndCursor
+		}
+		// Sections sharing a stream receive every page; skip pages that don't continue ours
+		if msg.From != "" && msg.From != cursor {
+			break
+		}
+		newRows := filterNotifications(
+			msg.Notifications,
+			filters,
+			m.sessionMarkedRead,
+			m.sessionMarkedDone,
+		)
+		if msg.From == "" {
+			m.Notifications = newRows
+		} else {
+			m.Notifications = append(m.Notifications, newRows...)
+		}
+		m.TotalCount = len(m.Notifications)
+		m.PageInfo = &msg.PageInfo
+		m.SetIsLoading(false)
+		m.Table.SetRows(m.BuildRows())
+		m.UpdateLastUpdated(time.Now())
+		m.UpdateTotalItemsCount(m.TotalCount)
+
+		cmd = tea.Batch(m.fetchCommentCountsForNotifications(newRows)...)
 
 	case ClearAllNotificationsMsg:
 		// Clear all notifications after marking all as done, then refetch
@@ -582,8 +603,7 @@ func (m *Model) FetchNextPageSectionRows() []tea.Cmd {
 
 	var cmds []tea.Cmd
 
-	// Parse filters from search value (includes repo filter if smartFilteringAtLaunch is enabled)
-	filters := parseNotificationFilters(m.GetSearchValue(), m.Ctx.Config.IncludeReadNotifications)
+	filters := m.filters()
 
 	// Handle is:done filter - these notifications cannot be retrieved
 	if filters.IsDone {
@@ -624,38 +644,19 @@ func (m *Model) FetchNextPageSectionRows() []tea.Cmd {
 	// Capture current page info for pagination
 	pageInfo := m.PageInfo
 
-	// Capture config limit for the closure
 	limit := m.Ctx.Config.Defaults.NotificationsLimit
-
-	// Build reason filter map for O(1) lookup
-	reasonFilterMap := make(map[string]bool, len(filters.ReasonFilters))
-	for _, reason := range filters.ReasonFilters {
-		reasonFilterMap[reason] = true
+	from := ""
+	if pageInfo != nil {
+		from = pageInfo.EndCursor
 	}
 
 	fetchCmd := func() tea.Msg {
-		// Check if we need to include bookmarked items
-		// Build a map for O(1) lookups in the filter loop
-		bookmarkStore := data.GetBookmarkStore()
-		bookmarkedIds := bookmarkStore.GetBookmarkedIds()
+		bookmarkedIds := data.GetBookmarkStore().GetBookmarkedIds()
 		hasBookmarks := len(bookmarkedIds) > 0
-		bookmarkedIdMap := make(map[string]bool, len(bookmarkedIds))
-		for _, id := range bookmarkedIds {
-			bookmarkedIdMap[id] = true
-		}
 
-		// Use the filter's read state directly - don't switch to "all" just for bookmarks/session items
-		// Bookmarked and session-marked-read items will be fetched separately by thread ID
-		readState := filters.ReadState
-
-		// Initialize done store for filtering
-		doneStore := data.GetDoneStore()
-
-		// Track accumulated notifications across multiple pages.
-		// We may need to fetch additional pages if many notifications are filtered out
-		// (e.g., marked as done locally). The loop continues until we have enough
-		// notifications to display or run out of pages from the API.
-		notifications := make([]notificationrow.Data, 0, limit)
+		// Fetch pages until this section has enough rows; the raw pages go to every section on the stream
+		var raw []data.NotificationData
+		matched := 0
 		currentPageInfo := pageInfo
 		var lastPageInfo data.PageInfo
 		isFirstPage := pageInfo == nil
@@ -663,7 +664,7 @@ func (m *Model) FetchNextPageSectionRows() []tea.Cmd {
 			res, err := data.FetchNotifications(
 				limit,
 				filters.RepoFilters,
-				readState,
+				filters.ReadState,
 				currentPageInfo,
 			)
 			if err != nil {
@@ -755,65 +756,16 @@ func (m *Model) FetchNextPageSectionRows() []tea.Cmd {
 				}
 			}
 
-			// Filter notifications based on bookmark settings and session state
-			for _, n := range res.Notifications {
-				// Skip notifications marked as done (GitHub API still returns them with all=true)
-				// Check both persistent store and session state
-				if doneStore.IsDone(n.Id, n.UpdatedAt) || sessionMarkedDone[n.Id] {
-					continue
-				}
+			raw = append(raw, res.Notifications...)
+			matched += len(filterNotifications(res.Notifications, filters, sessionMarkedRead, sessionMarkedDone))
 
-				include := false
-
-				// Always include notifications marked as read this session (until manual refresh)
-				if sessionMarkedRead[n.Id] {
-					include = true
-				} else if filters.IncludeBookmarked && hasBookmarks {
-					// Default view: include if unread OR bookmarked (O(1) map lookup)
-					include = n.Unread || bookmarkedIdMap[n.Id]
-				} else {
-					// Explicit filter: follow the ReadState filter
-					switch filters.ReadState {
-					case data.NotificationStateUnread:
-						include = n.Unread
-					case data.NotificationStateRead:
-						include = !n.Unread
-					case data.NotificationStateAll:
-						include = true
-					}
-				}
-
-				// Apply reason filter if specified (O(1) map lookup)
-				if include && len(reasonFilterMap) > 0 {
-					include = reasonFilterMap[n.Reason]
-				}
-
-				if include {
-					include = filters.matchesOrg(n.Repository.Owner.Login)
-				}
-
-				if include {
-					notifications = append(notifications, notificationrow.Data{
-						Notification: n,
-						// Generate initial activity description (will be updated with actor later)
-						ActivityDescription: notificationrow.GenerateActivityDescription(
-							n.Reason,
-							n.Subject.Type,
-							"",
-						),
-					})
-				}
-			}
-
-			// Check if we have enough notifications or if we've run out of pages
-			if len(notifications) >= limit || !lastPageInfo.HasNextPage {
+			if matched >= limit || !lastPageInfo.HasNextPage {
 				break
 			}
 
-			// Need more notifications - fetch the next page
 			currentPageInfo = &lastPageInfo
-			log.Debug("Fetching additional page due to done filtering",
-				"currentCount", len(notifications),
+			log.Debug("Fetching additional page due to local filtering",
+				"currentCount", matched,
 				"targetLimit", limit,
 				"nextPage", lastPageInfo.EndCursor)
 		}
@@ -823,9 +775,9 @@ func (m *Model) FetchNextPageSectionRows() []tea.Cmd {
 			SectionType: m.Type,
 			TaskId:      taskId,
 			Msg: SectionNotificationsFetchedMsg{
-				Notifications: notifications,
-				TotalCount:    len(notifications),
-				TaskId:        taskId,
+				Notifications: raw,
+				StreamKey:     filters.streamKey(),
+				From:          from,
 				PageInfo:      lastPageInfo,
 			},
 		}
@@ -834,6 +786,55 @@ func (m *Model) FetchNextPageSectionRows() []tea.Cmd {
 	cmds = append(cmds, m.SetIsLoading(true))
 
 	return cmds
+}
+
+func filterNotifications(
+	notifications []data.NotificationData,
+	filters NotificationFilters,
+	sessionMarkedRead map[string]bool,
+	sessionMarkedDone map[string]bool,
+) []notificationrow.Data {
+	doneStore := data.GetDoneStore()
+	bookmarkStore := data.GetBookmarkStore()
+	hasBookmarks := len(bookmarkStore.GetBookmarkedIds()) > 0
+	rows := make([]notificationrow.Data, 0, len(notifications))
+	for _, n := range notifications {
+		// GitHub still returns done notifications with all=true
+		if doneStore.IsDone(n.Id, n.UpdatedAt) || sessionMarkedDone[n.Id] {
+			continue
+		}
+
+		var include bool
+		switch {
+		case sessionMarkedRead[n.Id]:
+			include = true
+		case filters.IncludeBookmarked && hasBookmarks:
+			include = n.Unread || bookmarkStore.IsBookmarked(n.Id)
+		case filters.ReadState == data.NotificationStateUnread:
+			include = n.Unread
+		case filters.ReadState == data.NotificationStateRead:
+			include = !n.Unread
+		default:
+			include = true
+		}
+
+		if !include ||
+			(len(filters.ReasonFilters) > 0 && !slices.Contains(filters.ReasonFilters, n.Reason)) ||
+			!filters.matchesOrg(n.Repository.Owner.Login) {
+			continue
+		}
+
+		rows = append(rows, notificationrow.Data{
+			Notification: n,
+			// Activity description is updated once the actor is fetched
+			ActivityDescription: notificationrow.GenerateActivityDescription(
+				n.Reason,
+				n.Subject.Type,
+				"",
+			),
+		})
+	}
+	return rows
 }
 
 func (m *Model) UpdateLastUpdated(t time.Time) {
@@ -870,10 +871,17 @@ func FetchAllSections(
 	fetchCmds := make([]tea.Cmd, 0)
 	notifSections := section.ToImplSections[*Model](sections)
 
+	fetchedStreams := make(map[string]bool)
 	for _, notifSection := range notifSections {
 		notifSection.SetLastUpdated(time.Now())
 		notifSection.SetCreatedAt(time.Now())
 		notifSection.PageInfo = nil
+		filters := notifSection.filters()
+		if !filters.IsDone && fetchedStreams[filters.streamKey()] {
+			fetchCmds = append(fetchCmds, notifSection.SetIsLoading(true))
+			continue
+		}
+		fetchedStreams[filters.streamKey()] = true
 		fetchCmds = append(fetchCmds, notifSection.FetchNextPageSectionRows()...)
 	}
 
@@ -883,9 +891,9 @@ func FetchAllSections(
 // SectionNotificationsFetchedMsg contains the result of fetching notifications from the GitHub API.
 // This message is sent when the initial fetch or a refresh completes.
 type SectionNotificationsFetchedMsg struct {
-	Notifications []notificationrow.Data
-	TotalCount    int
-	TaskId        string
+	Notifications []data.NotificationData
+	StreamKey     string
+	From          string
 	PageInfo      data.PageInfo
 }
 
