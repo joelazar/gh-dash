@@ -756,8 +756,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 			cmds = append(cmds, clear)
 
-			scmd := m.updateSection(msg.SectionId, msg.SectionType, msg.Msg)
-			cmds = append(cmds, scmd)
+			if fetched, ok := msg.Msg.(notificationssection.SectionNotificationsFetchedMsg); ok {
+				cmds = append(cmds, m.updateNotificationSections(fetched))
+			} else {
+				cmds = append(cmds, m.updateSection(msg.SectionId, msg.SectionType, msg.Msg))
+			}
 
 			syncCmd := m.syncSidebar()
 			cmds = append(cmds, syncCmd)
