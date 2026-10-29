@@ -381,7 +381,7 @@ func (m *Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 				if !msg.Unread {
 					m.sessionMarkedRead[msg.Id] = true
 				}
-				m.Table.SetRows(m.BuildRows())
+				m.refreshRow(i)
 				break
 			}
 		}
@@ -402,7 +402,7 @@ func (m *Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 					m.Notifications[i].GetSubjectType(),
 					msg.Actor,
 				)
-				m.Table.SetRows(m.BuildRows())
+				m.refreshRow(i)
 				log.Debug("Updated notification", "id", msg.Id, "count",
 					msg.NewCommentsCount, "state", msg.SubjectState, "actor", msg.Actor)
 				break
@@ -415,7 +415,7 @@ func (m *Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		for i := range m.Notifications {
 			if m.Notifications[i].GetId() == msg.Id {
 				m.Notifications[i].ResolvedUrl = msg.ResolvedUrl
-				m.Table.SetRows(m.BuildRows())
+				m.refreshRow(i)
 				log.Debug("Updated notification URL", "id", msg.Id, "url", msg.ResolvedUrl)
 				break
 			}
@@ -567,6 +567,10 @@ func (m Model) BuildRows() []table.Row {
 	}
 
 	return rows
+}
+
+func (m *Model) refreshRow(i int) {
+	m.Table.UpdateRow(i, (&notificationrow.Notification{Ctx: m.Ctx, Data: &m.Notifications[i]}).ToTableRow())
 }
 
 func (m *Model) NumRows() int {
