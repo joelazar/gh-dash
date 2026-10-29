@@ -5,8 +5,11 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/dlvhdr/gh-dash/v4/internal/config"
 	"github.com/dlvhdr/gh-dash/v4/internal/data"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/section"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/context"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/theme"
 )
@@ -68,5 +71,47 @@ func TestSharedStreamSplitsPagesByOrg(t *testing.T) {
 		if got := len(tc.m.Notifications); got != tc.want {
 			t.Errorf("%s: got %d notifications, want %d", name, got, tc.want)
 		}
+	}
+}
+
+func TestFetchCommentCountsOncePerNotification(t *testing.T) {
+	restore := data.OverrideDoneStoreForTesting(
+		data.NewDoneStoreForTesting(filepath.Join(t.TempDir(), "done.json")),
+	)
+	defer restore()
+
+	cfg, err := config.ParseConfig(config.Location{
+		ConfigFlag:       "../../../config/testdata/test-config.yml",
+		SkipGlobalConfig: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to parse config: %v", err)
+	}
+	ctx := &context.ProgramContext{Config: &cfg}
+	ctx.Theme = theme.ParseTheme(ctx.Config)
+	ctx.Styles = context.InitStyles(ctx.Theme)
+
+	var sections []section.Section
+	for _, filters := range []string{"is:all", "is:all org:onomondo", "is:all -org:onomondo"} {
+		m := NewModel(0, ctx, config.NotificationsSectionConfig{Filters: filters}, time.Now())
+		sections = append(sections, &m)
+	}
+
+	var notifications []data.NotificationData
+	for _, n := range []data.NotificationData{notif("1", "onomondo"), notif("2", "joelazar"), notif("3", "onomondo")} {
+		n.Subject.Type = "PullRequest"
+		notifications = append(notifications, n)
+	}
+	fetched := SectionNotificationsFetchedMsg{
+		Notifications: notifications,
+		StreamKey:     sections[0].(*Model).filters().streamKey(),
+	}
+	for _, s := range sections {
+		s.Update(fetched)
+	}
+
+	batch, ok := FetchCommentCounts(sections, fetched)().(tea.BatchMsg)
+	if !ok || len(batch) != 3 {
+		t.Errorf("got %d enrichment commands, want 3", len(batch))
 	}
 }

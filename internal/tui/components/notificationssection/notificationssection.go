@@ -452,8 +452,6 @@ func (m *Model) Update(msg tea.Msg) (section.Section, tea.Cmd) {
 		m.UpdateLastUpdated(time.Now())
 		m.UpdateTotalItemsCount(m.TotalCount)
 
-		cmd = tea.Batch(m.fetchCommentCountsForNotifications(newRows)...)
-
 	case ClearAllNotificationsMsg:
 		// Clear all notifications after marking all as done, then refetch
 		m.Notifications = []notificationrow.Data{}
@@ -963,8 +961,25 @@ func (m *Model) UpdateProgramContext(ctx *context.ProgramContext) {
 	m.BaseModel.UpdateProgramContext(ctx)
 }
 
+func FetchCommentCounts(sections []section.Section, fetched SectionNotificationsFetchedMsg) tea.Cmd {
+	inPage := make(map[string]bool, len(fetched.Notifications))
+	for _, n := range fetched.Notifications {
+		inPage[n.Id] = true
+	}
+	var notifications []notificationrow.Data
+	for _, s := range section.ToImplSections[*Model](sections) {
+		for _, n := range s.Notifications {
+			if inPage[n.GetId()] {
+				delete(inPage, n.GetId())
+				notifications = append(notifications, n)
+			}
+		}
+	}
+	return tea.Batch(fetchCommentCountsForNotifications(notifications)...)
+}
+
 // fetchCommentCountsForNotifications returns commands to fetch comment counts for the given notifications
-func (m *Model) fetchCommentCountsForNotifications(notifications []notificationrow.Data) []tea.Cmd {
+func fetchCommentCountsForNotifications(notifications []notificationrow.Data) []tea.Cmd {
 	var cmds []tea.Cmd
 
 	log.Debug("fetchCommentCountsForNotifications called", "numNotifications", len(notifications))
