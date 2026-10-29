@@ -131,29 +131,33 @@ func (m *Model) GetCurrItem() int {
 }
 
 func (m *Model) PrevItem() int {
+	prevItem := m.rowsViewport.GetCurrItem()
 	currItem := m.rowsViewport.PrevItem()
-	m.SyncViewPortContent()
+	m.syncRows(prevItem, currItem)
 
 	return currItem
 }
 
 func (m *Model) NextItem() int {
+	prevItem := m.rowsViewport.GetCurrItem()
 	currItem := m.rowsViewport.NextItem()
-	m.SyncViewPortContent()
+	m.syncRows(prevItem, currItem)
 
 	return currItem
 }
 
 func (m *Model) FirstItem() int {
+	prevItem := m.rowsViewport.GetCurrItem()
 	currItem := m.rowsViewport.FirstItem()
-	m.SyncViewPortContent()
+	m.syncRows(prevItem, currItem)
 
 	return currItem
 }
 
 func (m *Model) LastItem() int {
+	prevItem := m.rowsViewport.GetCurrItem()
 	currItem := m.rowsViewport.LastItem()
-	m.SyncViewPortContent()
+	m.syncRows(prevItem, currItem)
 
 	return currItem
 }
@@ -183,11 +187,20 @@ func (m *Model) SyncViewPortContent() {
 
 func (m *Model) UpdateRow(i int, row Row) {
 	m.Rows[i] = row
+	m.syncRows(i)
+}
+
+func (m *Model) syncRows(ids ...int) {
 	if len(m.renderedRows) != len(m.Rows) {
 		m.SyncViewPortContent()
 		return
 	}
-	m.renderedRows[i] = m.renderRow(i, m.renderHeaderColumns())
+	headerColumns := m.renderHeaderColumns()
+	for _, i := range ids {
+		if i >= 0 && i < len(m.Rows) {
+			m.renderedRows[i] = m.renderRow(i, headerColumns)
+		}
+	}
 	m.rowsViewport.SyncViewPort(
 		strings.Join(m.renderedRows, "\n"),
 	)
