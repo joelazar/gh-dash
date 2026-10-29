@@ -757,7 +757,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, clear)
 
 			if fetched, ok := msg.Msg.(notificationssection.SectionNotificationsFetchedMsg); ok {
-				cmds = append(cmds, m.updateNotificationSections(fetched))
+				cmds = append(
+					cmds,
+					m.updateNotificationSections(fetched),
+					notificationssection.FetchCommentCounts(m.notifications, fetched),
+				)
 			} else {
 				cmds = append(cmds, m.updateSection(msg.SectionId, msg.SectionType, msg.Msg))
 			}
@@ -831,7 +835,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case notificationssection.UpdateNotificationReadStateMsg:
 		m.updateNotificationSections(msg)
 
-	case notificationssection.UpdateNotificationCommentsMsg:
+	case notificationssection.UpdateNotificationCommentsMsg, notificationssection.UpdateNotificationUrlMsg:
 		cmds = append(cmds, m.updateNotificationSections(msg))
 
 	case spinner.TickMsg:
