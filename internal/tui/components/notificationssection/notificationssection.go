@@ -960,6 +960,7 @@ func (m *Model) UpdateProgramContext(ctx *context.ProgramContext) {
 	if ctx.SidebarOpen != m.lastSidebarOpen {
 		m.lastSidebarOpen = ctx.SidebarOpen
 		m.Table.Columns = GetSectionColumns(ctx)
+		m.Table.SyncViewPortContent()
 	}
 
 	m.BaseModel.UpdateProgramContext(ctx)

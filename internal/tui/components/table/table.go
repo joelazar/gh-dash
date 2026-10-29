@@ -110,15 +110,20 @@ func (m *Model) SetIsLoading(isLoading bool) {
 }
 
 func (m *Model) SetDimensions(dimensions constants.Dimensions) {
+	if dimensions == m.dimensions {
+		return
+	}
 	m.dimensions = dimensions
 	m.rowsViewport.SetDimensions(constants.Dimensions{
 		Width:  m.dimensions.Width,
 		Height: m.dimensions.Height,
 	})
+	m.SyncViewPortContent()
 }
 
 func (m *Model) ResetCurrItem() {
 	m.rowsViewport.ResetCurrItem()
+	m.SyncViewPortContent()
 }
 
 func (m *Model) GetCurrItem() int {

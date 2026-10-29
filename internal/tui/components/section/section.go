@@ -299,9 +299,8 @@ func (m *BaseModel) UpdateProgramContext(ctx *context.ProgramContext) {
 		Height: max(0, newDimensions.Height-2),
 		Width:  max(0, newDimensions.Width),
 	}
-	m.Table.SetDimensions(tableDimensions)
 	m.Table.UpdateProgramContext(ctx)
-	m.Table.SyncViewPortContent()
+	m.Table.SetDimensions(tableDimensions)
 	m.SearchBar.UpdateProgramContext(ctx)
 }
 

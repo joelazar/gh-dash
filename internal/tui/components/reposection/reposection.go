@@ -525,9 +525,8 @@ func (m *Model) UpdateProgramContext(ctx *context.ProgramContext) {
 		Height: newDimensions.Height,
 		Width:  newDimensions.Width,
 	}
-	m.Table.SetDimensions(tableDimensions)
 	m.Table.UpdateProgramContext(ctx)
-	m.Table.SyncViewPortContent()
+	m.Table.SetDimensions(tableDimensions)
 	m.SearchBar.UpdateProgramContext(ctx)
 }
 
