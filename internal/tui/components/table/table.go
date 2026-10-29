@@ -26,6 +26,7 @@ type Model struct {
 	loadingSpinner spinner.Model
 	dimensions     constants.Dimensions
 	rowsViewport   listviewport.Model
+	renderedRows   []string
 	ContentHeight  int // Optional: override content height (0 = use default from config)
 }
 
@@ -165,13 +166,25 @@ func (m *Model) cacheColumnWidths() {
 func (m *Model) SyncViewPortContent() {
 	headerColumns := m.renderHeaderColumns()
 	m.cacheColumnWidths()
-	renderedRows := make([]string, 0, len(m.Rows))
+	m.renderedRows = make([]string, 0, len(m.Rows))
 	for i := range m.Rows {
-		renderedRows = append(renderedRows, m.renderRow(i, headerColumns))
+		m.renderedRows = append(m.renderedRows, m.renderRow(i, headerColumns))
 	}
 
 	m.rowsViewport.SyncViewPort(
-		lipgloss.JoinVertical(lipgloss.Left, renderedRows...),
+		strings.Join(m.renderedRows, "\n"),
+	)
+}
+
+func (m *Model) UpdateRow(i int, row Row) {
+	m.Rows[i] = row
+	if len(m.renderedRows) != len(m.Rows) {
+		m.SyncViewPortContent()
+		return
+	}
+	m.renderedRows[i] = m.renderRow(i, m.renderHeaderColumns())
+	m.rowsViewport.SyncViewPort(
+		strings.Join(m.renderedRows, "\n"),
 	)
 }
 
