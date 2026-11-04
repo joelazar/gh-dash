@@ -38,6 +38,7 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prrow"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prssection"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/prview"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/repopicker"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/reposection"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/section"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/sidebar"
@@ -57,6 +58,7 @@ type Model struct {
 	issueSidebar     issueview.Model
 	branchSidebar    branchsidebar.Model
 	notificationView notificationview.Model
+	repoPicker       repopicker.Model
 	currSectionId    int
 	footer           footer.Model
 	repo             section.Section
@@ -121,6 +123,7 @@ func NewModel(location config.Location, repos Repositories) Model {
 	m.branchSidebar = branchsidebar.NewModel(m.ctx)
 	m.notificationView = notificationview.NewModel(m.ctx)
 	m.tabs = tabs.NewModel(m.ctx)
+	m.repoPicker = repopicker.NewModel(m.ctx)
 
 	return m
 }
@@ -211,6 +214,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		if m.repoPicker.IsOpen() {
+			cmd, repo := m.repoPicker.Update(msg)
+			if repo != nil {
+				cmd = m.switchRepo(*repo)
+			}
+			return m, cmd
+		}
+
 		if m.prView.IsTextInputBoxFocused() {
 			m.prView, cmd = m.prView.Update(msg)
 			m.syncSidebar()
@@ -260,6 +271,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.SectionMode):
 			m.mode = ModeSection
+
+		case key.Matches(msg, m.keys.SwitchRepo):
+			return m, m.repoPicker.Open(repopicker.ListLocalRepos(m.ctx.Config.RepoPaths))
 
 		case key.Matches(msg, m.keys.PrevSection):
 			prevSection := m.getSectionAt(m.getPrevSectionId())
@@ -1038,6 +1052,12 @@ func (m *Model) View() tea.View {
 	if issueCmp != "" {
 		y := m.ctx.ScreenHeight - common.FooterHeight - m.issueSidebar.InputBoxLineFromButton() - common.InputBoxHeight - 6
 		layers = append(layers, lipgloss.NewLayer(issueCmp).X(previewPos.X+3).Y(y))
+	}
+
+	if picker := m.repoPicker.View(); picker != "" {
+		x := max(0, (m.ctx.ScreenWidth-lipgloss.Width(picker))/2)
+		y := max(0, (m.ctx.ScreenHeight-lipgloss.Height(picker))/3)
+		layers = append(layers, lipgloss.NewLayer(picker).X(x).Y(y).Z(1))
 	}
 
 	comp := lipgloss.NewCompositor(layers...)
@@ -1935,6 +1955,29 @@ func (m *Model) removeSection() {
 	nCnt := len(m.getCurrentViewSections())
 	m.updateTabs()
 	m.setCurrSectionId(min(nCnt-1, del))
+}
+
+// switchRepo re-scopes every section to repo, as if gh-dash was launched in its clone.
+// shortcut: rebuilds sections from config, so scratch sections are dropped; keep them if that annoys.
+func (m *Model) switchRepo(repo repopicker.Repo) tea.Cmd {
+	if repo.Name == "" {
+		m.ctx.GHRepo = &repository.Repository{}
+		m.ctx.RepoPath = ""
+	} else {
+		host := "github.com"
+		if m.ctx.HasGHRepo() && m.ctx.GHRepo.Host != "" {
+			host = m.ctx.GHRepo.Host
+		}
+		owner, name, _ := strings.Cut(repo.Name, "/")
+		m.ctx.GHRepo = &repository.Repository{Host: host, Owner: owner, Name: name}
+		m.ctx.RepoPath = repo.Path
+	}
+	data.ClearEnrichmentCache()
+	m.initSections()
+	m.setCurrSectionId(0)
+	fetchCmd := m.fetchAllViewSections()
+	m.updateTabs()
+	return tea.Batch(fetchCmd, m.onViewedRowChanged())
 }
 
 func (m *Model) initSections() {

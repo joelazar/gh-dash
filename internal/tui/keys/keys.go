@@ -49,6 +49,7 @@ type KeyMap struct {
 	SectionMode           key.Binding
 	NewSection            key.Binding
 	RemoveSection         key.Binding
+	SwitchRepo            key.Binding
 	Help                  key.Binding
 	Quit                  key.Binding
 }
@@ -134,6 +135,7 @@ func (k KeyMap) AppKeys() []key.Binding {
 		k.Search,
 		k.NewSection,
 		k.RemoveSection,
+		k.SwitchRepo,
 	}
 }
 
@@ -213,6 +215,10 @@ var Keys = &KeyMap{
 	RemoveSection: key.NewBinding(
 		key.WithKeys("x"),
 		key.WithHelp("ctrl+s x", "remove section"),
+	),
+	SwitchRepo: key.NewBinding(
+		key.WithKeys("ctrl+o"),
+		key.WithHelp("ctrl+o", "switch repo"),
 	),
 	CopyUrl: key.NewBinding(
 		key.WithKeys("Y"),
@@ -335,6 +341,8 @@ func rebindUniversal(universal []config.Keybinding) error {
 			key = &Keys.CopyNumber
 		case "newSection":
 			key = &Keys.NewSection
+		case "switchRepo":
+			key = &Keys.SwitchRepo
 		case "help":
 			key = &Keys.Help
 		case "quit":
