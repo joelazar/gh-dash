@@ -2,8 +2,10 @@
 package repopicker
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -85,11 +87,16 @@ type labels []Repo
 func (l labels) String(i int) string { return l[i].label() }
 func (l labels) Len() int            { return len(l) }
 
+type item struct {
+	repo    Repo
+	matched []int
+}
+
 type Model struct {
 	ctx      *context.ProgramContext
 	input    textinput.Model
 	repos    []Repo
-	filtered []Repo
+	filtered []item
 	selected int
 	open     bool
 }
@@ -104,7 +111,7 @@ func (m *Model) Open(repos []Repo) tea.Cmd {
 	m.repos = append([]Repo{{}}, repos...)
 	m.input = inputbox.DefaultTextInput(m.ctx)
 	m.input.Placeholder = "type to filter repos"
-	m.input.SetWidth(width - 14)
+	m.input.SetWidth(width - 22)
 	m.open = true
 	m.filter()
 	return m.input.Focus()
@@ -112,14 +119,16 @@ func (m *Model) Open(repos []Repo) tea.Cmd {
 
 func (m *Model) filter() {
 	m.selected = 0
+	m.filtered = nil
 	q := m.input.Value()
 	if q == "" {
-		m.filtered = m.repos
+		for _, r := range m.repos {
+			m.filtered = append(m.filtered, item{repo: r})
+		}
 		return
 	}
-	m.filtered = nil
 	for _, match := range fuzzy.FindFrom(q, labels(m.repos)) {
-		m.filtered = append(m.filtered, m.repos[match.Index])
+		m.filtered = append(m.filtered, item{m.repos[match.Index], match.MatchedIndexes})
 	}
 }
 
@@ -132,7 +141,7 @@ func (m *Model) Update(msg tea.KeyMsg) (tea.Cmd, *Repo) {
 	case "enter":
 		m.open = false
 		if m.selected < len(m.filtered) {
-			r := m.filtered[m.selected]
+			r := m.filtered[m.selected].repo
 			return nil, &r
 		}
 		return nil, nil
@@ -158,36 +167,83 @@ func (m *Model) View() string {
 		return ""
 	}
 	s := m.ctx.Styles.Select
+	faint := lipgloss.NewStyle().Foreground(m.ctx.Theme.FaintText)
+	divider := faint.Render(strings.Repeat("─", width))
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(m.ctx.Theme.PrimaryText).Render("Switch repo")
+	count := faint.Render(fmt.Sprintf("%d/%d", len(m.filtered), len(m.repos)))
+	header := title + "  " + m.input.View()
+	header += strings.Repeat(" ", max(1, width-lipgloss.Width(header)-lipgloss.Width(count))) + count
+
 	current := ""
 	if m.ctx.HasGHRepo() {
 		current = m.ctx.GHRepo.Owner + "/" + m.ctx.GHRepo.Name
 	}
-	faint := lipgloss.NewStyle().Foreground(m.ctx.Theme.FaintText)
 
 	// Scroll so the selected row stays in view.
 	start := max(0, m.selected-maxVisible+1)
 	end := min(len(m.filtered), start+maxVisible)
 
-	var b strings.Builder
-	b.WriteString(" Switch repo: " + m.input.View() + "\n")
-	b.WriteString(faint.Render(strings.Repeat("─", width)) + "\n")
+	lines := []string{header, divider}
 	if len(m.filtered) == 0 {
-		b.WriteString(s.NoResults.Render("no matching repos") + "\n")
+		lines = append(lines, s.NoResults.Render("no matching repos"))
 	}
 	for i := start; i < end; i++ {
-		r := m.filtered[i]
-		prefix := "  "
-		style := s.ItemStyle.Foreground(m.ctx.Theme.SecondaryText)
-		if i == m.selected {
-			prefix = s.Pointer.Render(constants.SelectionIcon + " ")
-			style = s.SelectedStyle.Bold(true)
-		}
-		line := prefix + style.Render(r.label())
-		if r.Name == current {
-			line += faint.Render(" (current)")
-		}
-		b.WriteString(line + "\n")
+		lines = append(lines, m.row(m.filtered[i], i == m.selected, m.filtered[i].repo.Name == current))
 	}
-	b.WriteString(faint.Render(" enter select · esc cancel · ↑/↓ move"))
-	return s.PopupStyle.Width(width + 2).Render(b.String())
+	// Fixed height so the popup does not jump while filtering.
+	for len(lines) < min(maxVisible, len(m.repos))+2 {
+		lines = append(lines, "")
+	}
+
+	key := lipgloss.NewStyle().Foreground(m.ctx.Theme.SecondaryText)
+	help := key.Render("enter") + faint.Render(" select   ") +
+		key.Render("esc") + faint.Render(" cancel   ") +
+		key.Render("↑/↓") + faint.Render(" move")
+	lines = append(lines, divider, help)
+
+	return s.PopupStyle.Padding(0, 1).Width(width + 4).Render(strings.Join(lines, "\n"))
+}
+
+func (m *Model) row(it item, selected, current bool) string {
+	t := m.ctx.Theme
+	base := lipgloss.NewStyle()
+	if selected {
+		base = base.Background(t.SelectedBackground)
+	}
+	owner := base.Foreground(t.FaintText)
+	name := base.Foreground(t.SecondaryText)
+	if selected {
+		name = base.Foreground(t.PrimaryText).Bold(true)
+	}
+	if it.repo.Name == "" {
+		name = owner.Italic(true)
+	}
+	hit := base.Foreground(m.ctx.Styles.Colors.OpenIssue).Bold(true)
+
+	var b strings.Builder
+	if selected {
+		b.WriteString(m.ctx.Styles.Select.Pointer.Inherit(base).Render(constants.SelectionIcon + " "))
+	} else {
+		b.WriteString("  ")
+	}
+	label := it.repo.label()
+	nameStart := strings.IndexByte(label, '/') + 1
+	for i, r := range label {
+		st := name
+		if i < nameStart {
+			st = owner
+		}
+		if slices.Contains(it.matched, i) {
+			st = hit
+		}
+		b.WriteString(st.Render(string(r)))
+	}
+
+	suffix := ""
+	if current {
+		suffix = base.Foreground(t.FaintText).Render("current ")
+	}
+	gap := max(1, width-lipgloss.Width(b.String())-lipgloss.Width(suffix))
+	return b.String() + base.Render(strings.Repeat(" ", gap)) + suffix
 }
