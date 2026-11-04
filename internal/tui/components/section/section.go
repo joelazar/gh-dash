@@ -426,7 +426,19 @@ func (m *BaseModel) MakeSectionCmd(cmd tea.Cmd) tea.Cmd {
 }
 
 func (m *BaseModel) GetFilters() string {
-	return m.GetSearchValue()
+	searchValue := m.GetSearchValue()
+	if !m.IsFilteredByCurrentRemote {
+		return searchValue
+	}
+	// GitHub search ORs repo:, org: and user: scopes, so an org:/user: filter
+	// would widen a smart-filtered section back to the whole org.
+	var tokens []string
+	for token := range strings.FieldsSeq(searchValue) {
+		if !strings.HasPrefix(token, "org:") && !strings.HasPrefix(token, "user:") {
+			tokens = append(tokens, token)
+		}
+	}
+	return strings.Join(tokens, " ")
 }
 
 func (m *BaseModel) GetMainContent() string {

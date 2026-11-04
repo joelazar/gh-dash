@@ -530,3 +530,15 @@ func TestViewRendersAtMainContentWidth(t *testing.T) {
 		})
 	}
 }
+
+func TestGetFilters_DropsOrgAndUserWhenSmartFiltered(t *testing.T) {
+	repo := repository.Repository{Owner: "onomondo", Name: "smsc"}
+	ctx := &context.ProgramContext{GHRepo: &repo}
+	search := "is:open org:onomondo user:joelazar -org:other author:app/renovate"
+
+	m := BaseModel{Ctx: ctx, SearchValue: search, IsFilteredByCurrentRemote: true}
+	require.Equal(t, "repo:onomondo/smsc is:open -org:other author:app/renovate", m.GetFilters())
+
+	m.IsFilteredByCurrentRemote = false
+	require.Equal(t, search, m.GetFilters())
+}
