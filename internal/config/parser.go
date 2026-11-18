@@ -92,6 +92,8 @@ type PrsSectionConfig struct {
 	Limit   *int            `yaml:"limit,omitempty"`
 	Layout  PrsLayoutConfig `yaml:"layout,omitempty"`
 	Type    *ViewType       `yaml:"type,omitempty"`
+	// RepoOnly hides the section unless gh-dash is scoped to a repo (launched in a clone or switched with ctrl+o).
+	RepoOnly bool `yaml:"repoOnly,omitempty"`
 }
 
 type IssuesSectionConfig struct {

@@ -524,8 +524,9 @@ func (m *Model) ResetRows() {
 }
 
 func InitSections(ctx *context.ProgramContext) []section.Section {
-	sections := make([]section.Section, len(ctx.Config.PRSections))
-	for i, sectionConfig := range ctx.Config.PRSections {
+	prSections := ctx.PRSections()
+	sections := make([]section.Section, len(prSections))
+	for i, sectionConfig := range prSections {
 		sections[i] = new(NewModel(
 			i,
 			ctx,

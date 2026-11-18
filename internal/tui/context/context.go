@@ -60,6 +60,17 @@ func (ctx *ProgramContext) HasGHRepo() bool {
 	return ctx.GHRepo != nil && *ctx.GHRepo != (repository.Repository{})
 }
 
+// PRSections returns the configured PR sections, minus repoOnly ones when no repo is selected.
+func (ctx *ProgramContext) PRSections() []config.PrsSectionConfig {
+	var sections []config.PrsSectionConfig
+	for _, cfg := range ctx.Config.PRSections {
+		if !cfg.RepoOnly || ctx.HasGHRepo() {
+			sections = append(sections, cfg)
+		}
+	}
+	return sections
+}
+
 func (ctx *ProgramContext) GetViewSectionsConfig() []config.SectionConfig {
 	var configs []config.SectionConfig
 	switch ctx.View {
@@ -76,7 +87,7 @@ func (ctx *ProgramContext) GetViewSectionsConfig() []config.SectionConfig {
 			configs = append(configs, cfg.ToSectionConfig())
 		}
 	case config.PRsView:
-		for _, cfg := range ctx.Config.PRSections {
+		for _, cfg := range ctx.PRSections() {
 			configs = append(configs, cfg.ToSectionConfig())
 		}
 	case config.IssuesView:
