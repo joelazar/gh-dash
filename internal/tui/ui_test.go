@@ -21,6 +21,7 @@ import (
 	"github.com/dlvhdr/gh-dash/v4/internal/data"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/branchsidebar"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/footer"
+	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/issuessection"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/issueview"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notificationrow"
 	"github.com/dlvhdr/gh-dash/v4/internal/tui/components/notificationssection"
@@ -2251,4 +2252,21 @@ func TestNotificationCommandTemplateVariables(t *testing.T) {
 			require.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+func TestUpdateSection_StaleSectionIdDoesNotPanic(t *testing.T) {
+	cfg, err := config.ParseConfig(config.Location{
+		ConfigFlag: "../config/testdata/test-config.yml",
+	})
+	require.NoError(t, err)
+
+	ctx := &context.ProgramContext{Config: &cfg, View: config.PRsView}
+	m := Model{ctx: ctx}
+	prSec := prssection.NewModel(0, ctx, config.PrsSectionConfig{}, time.Now(), time.Now())
+	m.prs = []section.Section{&prSec}
+
+	require.NotPanics(t, func() {
+		m.updateSection(5, prssection.SectionType, prssection.SectionPullRequestsFetchedMsg{})
+		m.updateSection(5, issuessection.SectionType, nil)
+	})
 }

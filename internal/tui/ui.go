@@ -1162,11 +1162,15 @@ func (m *Model) updateSection(id int, sType string, msg tea.Msg) (cmd tea.Cmd) {
 		}
 
 	case prssection.SectionType:
-		updatedSection, cmd = m.prs[id].Update(msg)
-		m.prs[id] = updatedSection
+		if id < len(m.prs) {
+			updatedSection, cmd = m.prs[id].Update(msg)
+			m.prs[id] = updatedSection
+		}
 	case issuessection.SectionType:
-		updatedSection, cmd = m.issues[id].Update(msg)
-		m.issues[id] = updatedSection
+		if id < len(m.issues) {
+			updatedSection, cmd = m.issues[id].Update(msg)
+			m.issues[id] = updatedSection
+		}
 	}
 
 	currSection := m.getCurrSection()
